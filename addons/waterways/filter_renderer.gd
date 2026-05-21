@@ -1,0 +1,306 @@
+# Copyright © 2021 Kasper Arnklit Frandsen - MIT License
+# See `LICENSE.md` included in the source distribution for details.
+@tool
+extends SubViewport
+
+const DILATE_PASS1_PATH = "res://addons/waterways/shaders/filters/dilate_filter_pass1.gdshader"
+const DILATE_PASS2_PATH = "res://addons/waterways/shaders/filters/dilate_filter_pass2.gdshader"
+const DILATE_PASS3_PATH = "res://addons/waterways/shaders/filters/dilate_filter_pass3.gdshader"
+const NORMAL_MAP_PASS_PATH = "res://addons/waterways/shaders/filters/normal_map_pass.gdshader"
+const NORMAL_TO_FLOW_PASS_PATH = "res://addons/waterways/shaders/filters/normal_to_flow_filter.gdshader"
+const BLUR_PASS1_PATH = "res://addons/waterways/shaders/filters/blur_pass1.gdshader"
+const BLUR_PASS2_PATH = "res://addons/waterways/shaders/filters/blur_pass2.gdshader"
+const FOAM_PASS_PATH = "res://addons/waterways/shaders/filters/foam_pass.gdshader"
+const COMBINE_PASS_PATH = "res://addons/waterways/shaders/filters/combine_pass.gdshader"
+const DOTPRODUCT_PASS_PATH = "res://addons/waterways/shaders/filters/dotproduct.gdshader"
+const FLOW_PRESSURE_PASS_PATH = "res://addons/waterways/shaders/filters/flow_pressure_pass.gdshader"
+
+
+var dilate_pass_1_shader : Shader
+var dilate_pass_2_shader : Shader
+var dilate_pass_3_shader : Shader
+var normal_map_pass_shader : Shader
+var normal_to_flow_pass_shader : Shader
+var blur_pass1_shader : Shader
+var blur_pass2_shader : Shader
+var foam_pass_shader : Shader
+var combine_pass_shader : Shader
+var dotproduct_pass_shader : Shader
+var flow_pressure_pass_shader : Shader
+
+var filter_mat : Material
+var _default_fill_texture : Texture2D
+var last_readback_error := ""
+
+
+func _enter_tree() -> void:
+	dilate_pass_1_shader = load(DILATE_PASS1_PATH) as Shader
+	dilate_pass_2_shader = load(DILATE_PASS2_PATH) as Shader
+	dilate_pass_3_shader = load(DILATE_PASS3_PATH) as Shader
+	normal_map_pass_shader = load(NORMAL_MAP_PASS_PATH) as Shader
+	normal_to_flow_pass_shader = load(NORMAL_TO_FLOW_PASS_PATH) as Shader
+	blur_pass1_shader = load(BLUR_PASS1_PATH) as Shader
+	blur_pass2_shader = load(BLUR_PASS2_PATH) as Shader
+	foam_pass_shader = load(FOAM_PASS_PATH) as Shader
+	combine_pass_shader = load(COMBINE_PASS_PATH) as Shader
+	dotproduct_pass_shader = load(DOTPRODUCT_PASS_PATH) as Shader
+	flow_pressure_pass_shader = load(FLOW_PRESSURE_PASS_PATH) as Shader
+	
+	filter_mat = ShaderMaterial.new()
+	
+	$ColorRect.material = filter_mat
+
+
+func apply_combine(r_texture : Texture2D, g_texture : Texture2D, b_texture : Texture2D = null, a_texture : Texture2D = null) -> ImageTexture:
+	if not _has_valid_reference_texture(r_texture, "combine r_texture"):
+		return null
+	if g_texture == null:
+		last_readback_error = "combine g_texture is null"
+		return null
+	filter_mat.shader = combine_pass_shader
+	size = r_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("r_texture", r_texture)
+	$ColorRect.material.set_shader_parameter("g_texture", g_texture)
+	$ColorRect.material.set_shader_parameter("b_texture", b_texture)
+	$ColorRect.material.set_shader_parameter("a_texture", a_texture)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("combine")
+
+
+func apply_dotproduct(input_texture : Texture2D, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "dotproduct input_texture"):
+		return null
+	filter_mat.shader = dotproduct_pass_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("dotproduct")
+
+
+func apply_flow_pressure(input_texture : Texture2D, resolution : float, rows : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "flow_pressure input_texture"):
+		return null
+	filter_mat.shader = flow_pressure_pass_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("rows", rows)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("flow_pressure")
+
+
+func apply_foam(input_texture : Texture2D, distance : float, cutoff : float, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "foam input_texture"):
+		return null
+	filter_mat.shader = foam_pass_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("offset", distance)
+	$ColorRect.material.set_shader_parameter("cutoff", cutoff)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("foam")
+
+
+func apply_blur(input_texture : Texture2D, blur : float, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "blur input_texture"):
+		return null
+	filter_mat.shader = blur_pass1_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("blur", blur)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var pass1_result := _create_output_texture("blur pass 1")
+	if pass1_result == null:
+		return null
+	# Pass 2
+	filter_mat.shader = blur_pass2_shader
+	$ColorRect.material.set_shader_parameter("input_texture", pass1_result)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("blur", blur)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("blur pass 2")
+
+
+func apply_vertical_blur(input_texture : Texture2D, blur : float, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "vertical_blur input_texture"):
+		return null
+	filter_mat.shader = blur_pass2_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("blur", blur)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("vertical_blur")
+
+
+func apply_normal_to_flow(input_texture : Texture2D, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "normal_to_flow input_texture"):
+		return null
+	filter_mat.shader = normal_to_flow_pass_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("normal_to_flow")
+
+
+func apply_normal(input_texture : Texture2D, resolution : float) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "normal input_texture"):
+		return null
+	filter_mat.shader = normal_map_pass_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("normal")
+
+
+func apply_dilate(input_texture : Texture2D, dilation : float, fill : float, resolution : float, fill_texture : Texture2D = null) -> ImageTexture:
+	if not _has_valid_reference_texture(input_texture, "dilate input_texture"):
+		return null
+	filter_mat.shader = dilate_pass_1_shader
+	size = input_texture.get_size()
+	$ColorRect.position = Vector2(0, 0)
+	$ColorRect.size = size
+	$ColorRect.material.set_shader_parameter("input_texture", input_texture)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("dilation", dilation)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var pass1_result := _create_output_texture("dilate pass 1")
+	if pass1_result == null:
+		return null
+	# Pass 2
+	filter_mat.shader = dilate_pass_2_shader
+	$ColorRect.material.set_shader_parameter("input_texture", pass1_result)
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("dilation", dilation)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var pass2_result := _create_output_texture("dilate pass 2")
+	if pass2_result == null:
+		return null
+	# Pass 3
+	filter_mat.shader = dilate_pass_3_shader
+	$ColorRect.material.set_shader_parameter("distance_texture", pass2_result)
+	$ColorRect.material.set_shader_parameter("color_texture", _get_dilate_fill_texture(fill_texture))
+	$ColorRect.material.set_shader_parameter("size", resolution)
+	$ColorRect.material.set_shader_parameter("fill", fill)
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return _create_output_texture("dilate pass 3")
+
+
+func _create_output_texture(pass_label : String) -> ImageTexture:
+	var image := _read_viewport_image(pass_label)
+	if image == null:
+		return null
+	var result := ImageTexture.create_from_image(image)
+	if result == null or result.get_width() <= 0 or result.get_height() <= 0:
+		last_readback_error = pass_label + " output texture creation failed"
+		return null
+	return result
+
+
+func _read_viewport_image(pass_label : String) -> Image:
+	last_readback_error = ""
+	var preflight_error := _get_viewport_readback_preflight_error(pass_label)
+	if not preflight_error.is_empty():
+		last_readback_error = preflight_error
+		return null
+	var viewport_texture := get_texture()
+	if viewport_texture == null:
+		last_readback_error = pass_label + " viewport texture is null"
+		return null
+	var texture_size := viewport_texture.get_size()
+	if texture_size.x <= 0 or texture_size.y <= 0:
+		last_readback_error = pass_label + " viewport texture has invalid size " + str(texture_size)
+		return null
+	var image := viewport_texture.get_image()
+	if image == null or image.is_empty():
+		last_readback_error = pass_label + " viewport image is empty or unreadable"
+		return null
+	if image.get_width() <= 0 or image.get_height() <= 0:
+		last_readback_error = pass_label + " viewport image has invalid size " + str(image.get_size())
+		return null
+	return image
+
+
+func _get_viewport_readback_preflight_error(pass_label : String) -> String:
+	if not is_inside_tree():
+		return pass_label + " renderer is not inside the scene tree"
+	if get_tree() == null:
+		return pass_label + " renderer has no SceneTree"
+	if size.x <= 0 or size.y <= 0:
+		return pass_label + " viewport size is invalid " + str(size)
+	if String(DisplayServer.get_name()).to_lower() == "headless":
+		return pass_label + " viewport readback is unavailable with the headless display server"
+	if String(RenderingServer.get_current_rendering_method()).to_lower() == "dummy":
+		return pass_label + " viewport readback is unavailable with the dummy rendering method"
+	var viewport_rid := get_viewport_rid()
+	if not viewport_rid.is_valid():
+		return pass_label + " viewport RID is invalid"
+	var texture_rid := RenderingServer.viewport_get_texture(viewport_rid)
+	if not texture_rid.is_valid():
+		return pass_label + " viewport texture RID is invalid"
+	return ""
+
+
+func _has_valid_reference_texture(texture : Texture2D, label : String) -> bool:
+	last_readback_error = ""
+	if texture == null:
+		last_readback_error = label + " is null"
+		return false
+	if texture.get_width() <= 0 or texture.get_height() <= 0:
+		last_readback_error = label + " has invalid size"
+		return false
+	return true
+
+
+func _get_dilate_fill_texture(fill_texture : Texture2D) -> Texture2D:
+	if fill_texture != null:
+		return fill_texture
+	if _default_fill_texture == null:
+		var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		image.set_pixel(0, 0, Color.WHITE)
+		_default_fill_texture = ImageTexture.create_from_image(image)
+	return _default_fill_texture
