@@ -26,7 +26,7 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [ ] Read `spec.md`, `plan.md`, and `validation.md`.
 - [ ] Check `audit/code-audit.md` for relevant known risks.
 - [ ] Use the known local Godot 4.6.3 executables when running local probes: console/script runner `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`; GUI editor `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe`.
-- [ ] Confirm whether the task affects active code in `addons/waterways`, legacy reference code in `legacy/godot-3/addons/waterways`, or both.
+- [ ] Confirm whether the task affects active code in `addons/waterways`, project scenes/assets, docs, or spec-driven feature files.
 - [ ] Run the context challenge check: if the user or agent may be misreading expected behavior, stale generated data, validation geometry, or engine limitations as a defect, raise that with evidence before patching.
 
 ## Implementation
@@ -58,13 +58,21 @@ Use this section as the canonical checklist for unfinished work. When items clos
 - [ ] Remove temporary debug code that is not part of the planned validation UI.
 - [ ] List scratch/generated artifacts created during validation and decide whether to keep, exclude, or delete them.
 - [ ] If validation used a scratch project, confirm active add-on scripts were mirrored there before running probes.
-- [ ] Confirm packaging excludes disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs.
+- [ ] Confirm disposable folders, generated bakes, editor caches, validation fixtures, and local probe outputs are ignored, deleted, or intentionally kept.
 - [ ] Add or refine comments for non-obvious code, Godot quirks, shader math, performance-sensitive paths, and architectural boundaries.
 - [ ] Update docs for any changed decisions.
 - [ ] Update feature or architecture documentation for changed behavior, data flow, module boundaries, or validation procedures.
 - [ ] Confirm generated data and resources are explicit and inspectable.
 - [ ] Confirm editor-only state did not leak into runtime-only code.
-- [ ] Confirm no obsolete Godot 3 APIs were introduced into active Godot 4.6+ code.
+- [ ] Confirm active code uses current Godot 4.6+ APIs.
+
+## Feature Completion Gate
+
+Complete this final requirement before marking the feature complete. See `../../02-waterways-zoo-and-museum.md` for the full Waterways Zoo and Museum guidance.
+
+- [ ] Museum showcase decision: does this feature deserve to be showcased in the Museum? Does it represent a new idea or feature that is worth showcasing?
+  - If yes, add or update a Zoo/Museum scene, validation fixture, spatial labels, screenshots, or a clearly tracked exhibit follow-up before completion.
+  - If no, record the reason in `review.md` so future maintainers know why no new showcase was needed.
 
 ## Historical or Closed Tasks
 

@@ -18,8 +18,9 @@ Waterways should keep the existing Valve/Catlike two-phase flow technique as the
 
 - Status: Complete for direction; strengthened with external implementation evidence and Option A validation patterns.
 - Recommendation: Treat this as a "two-phase flow foundation" feature, not a rewrite. Preserve `FlowUVW`, document the local variant, add visible validation expectations, and decide whether shader duplication should remain or be centralized through a Godot-validated include/helper pattern.
+- 2026-05-22 rebase note: flow-map direction regression and curve-derived river-flow work resolved the generated-map blockers that made early two-phase visual validation ambiguous. Default curve-based River bakes now have downstream RG support, true `curve_only` is explicit, and validation can report decoded flow-vector statistics.
 - Confidence: High for preserving the technique; medium for any refactor or extra parameters until Godot shader include behavior and visible output are validated.
-- Biggest unknown that remains: Whether centralizing the helper across shaders is worth the Godot import/editor risk, or whether synchronized duplication is safer for this addon.
+- Biggest unknown that remains: Whether literal editor preview/menu validation or lava validation reveal differences from the current visible Forward+ River runtime result; Mobile and Compatibility now have scene-launch smoke coverage only, and helper centralization remains a later packaging/import question.
 - Decision or plan section this research unlocked: Scope for a future two-phase-flow spec.
 - Requirements this research implies:
   - Preserve continuous two-phase normal-map flow with no obvious reset popping.
@@ -27,6 +28,7 @@ Waterways should keep the existing Valve/Catlike two-phase flow technique as the
   - Preserve debug visibility for flow pattern, arrows, strength, and foam mix.
   - Validate water, debug, and lava shader variants together.
   - Treat two-phase flow as shader/runtime behavior fed by generated or imported flow maps.
+  - Validate generated-map activity through decoded vector statistics before treating visible issues as shader defects.
 - Non-goals or rejected ideas this research supports:
   - Do not replace two-phase flow with simulation.
   - Do not make Gerstner, FFT, or compute wakes part of this focused feature.
@@ -47,8 +49,8 @@ This feature is not motivated by a known broken implementation. It is motivated 
 - Evidence against the premise: The current implementation may already be sufficient for `0.2.2` parity, so feature work may be post-release hardening rather than release-blocking.
 - Possible expected-behavior explanation: Any "jelly" or repetition artifacts may come from authored flow speed, normal texture choice, UV scale, or bake data quality rather than the two-phase algorithm itself.
 - Confidence: High.
-- Smallest check that can falsify the premise: In a visible River scene, set debug view to Flow Pattern and observe whether reset popping, pulsing, or seam artifacts are actually present with default settings.
-- User-facing note or question to raise before patching: "Do we want this as release hardening, or as a post-parity shader/authoring foundation?"
+- Smallest check that can falsify the premise: In a visible Godot 4.6.3 River scene with current generated maps, capture decoded vector and alpha stats, then set debug view to Flow Pattern and observe whether reset popping, pulsing, stuck motion despite active vectors, or direction disagreement is present.
+- User-facing note or question to raise before patching: "Can we confirm the current generated map has active vectors and check Flow Pattern, Flow Arrows, Flow Strength, and Noise Map before changing the shader?"
 
 ## Active Add-on Baseline
 
@@ -65,11 +67,14 @@ Waterways already has the core classic flow-map stack. This feature should prese
 - Current behavior:
   - Flow maps pack signed flow in RG, foam in B, and phase/noise offset in A.
   - The shader remaps flow from `0..1` into signed `-1..1`.
+  - Default curve-based River bakes generate downstream RG support instead of leaving most generated maps near-neutral.
+  - True `curve_only` and `legacy_collision_only` behaviors are explicit, and blank support-map fallbacks are recorded rather than inferred.
   - A flow-force multiplier combines base flow, steepness, distance, and pressure.
   - `FlowUVW` computes two temporal phases offset by half a period.
   - The shader blends phase A and B with a triangle-wave weight so each phase fades out before its reset.
   - Secondary normal sampling at double UV scale adds detail near the camera.
   - Debug modes visualize encoded/effective flow and final animated pattern.
+  - Flow Arrows threshold near-neutral decoded vectors so tiny baseline noise is not treated as meaningful direction.
 - Existing extension points:
   - Material parameters: `flow_speed`, `flow_base`, `flow_steepness`, `flow_distance`, `flow_pressure`, `flow_max`, `uv_scale`.
   - Internal uniforms: `i_flowmap`, `i_distmap`, `i_valid_flowmap`, `i_uv2_sides`.
@@ -88,13 +93,14 @@ Waterways already has the core classic flow-map stack. This feature should prese
   - Generated textures/resources bridge the two.
 - Current validation scenes, debug views, or probes:
   - Debug views exist for Flow Map, Flow Pattern, Flow Arrows, Flow Strength, and Foam Mix.
-  - `validate_data_textures()` checks flow-map data and neutral-flow preservation.
-  - No visible validation scene is present in this minimal checkout.
+  - `scenes/validation/two_phase_flow_validation.tscn` exists as the focused visible validation fixture.
+  - `validate_data_textures()` checks flow-map data, neutral-flow preservation, alpha phase/noise statistics, and decoded flow-vector statistics for generated maps.
+  - `check_shader_drift.py` guards the river/debug/lava `FlowUVW` contract and River debug menu entries.
 - Current known limitations:
   - `FlowUVW` is duplicated across water, debug, and lava shader files.
   - The UV jump constants are hard-coded in shader files.
   - The local `FlowUVW` variant differs slightly from the common published pseudocode by offsetting flow progress around `progress - 0.5`; this should be documented before anyone "fixes" it.
-  - No explicit two-phase validation scene/procedure is bundled in this minimal checkout.
+  - Current-baseline River Forward+ runtime motion has been recorded after the generated-map rebase, but literal editor preview, lava, Mobile, and Compatibility checks remain open.
 - Current performance-sensitive paths:
   - Two-phase normal sampling costs multiple texture samples per fragment.
   - The River shader samples two phases at base scale and, near camera, two more phases at double scale.
@@ -189,7 +195,7 @@ Option A is not a retreat from implementation. It is the evidence-backed path be
 | UV jump / repetition control | Catlike explains jump vectors near `0.2..0.25`; Valve discusses phase offsets and repetition; Uncharted notes placement/phase offsets and minimizing distortion at high blend. | River uses `jump1 = vec2(0.24, 0.2083333)` and `jump2 = vec2(0.20, 0.25)`, matching the established jump-value family. | Treat current constants as intentional local defaults; changing or exposing them requires visual A/B proof. |
 | Debug/preview workflow | IceFall describes a small test app; Catlike uses a UV test texture; Superposition uses realtime preview materials and editor time; Maujoe ships demo scenes for water/lava. | Waterways has Flow Pattern, Flow Arrows, Flow Strength, Foam Mix, Noise Map, and data-texture validation. | Option A should add a validation procedure/scene around existing debug affordances, not invent a new shader first. |
 | Cross-material reuse | Godot/Maujoe and Superposition both apply the same flow-map idea to water, lava, slime/solid materials, foam, and preview materials. | Waterways uses the same conceptual helper in river, river_debug, and lava. | Preserve cross-shader behavior and guard against helper drift. |
-| Data texture hygiene | Catlike and Superposition both call out linear/non-sRGB data and compression artifacts; Waterways already validates uncompressed/non-normal-map/mipmap assumptions. | `validate_data_textures()` checks readable image data, import flags, block compression, mipmaps, and neutral RG. | Keep data texture validation in the acceptance story; visual artifacts may be import/data issues rather than helper bugs. |
+| Data texture hygiene | Catlike and Superposition both call out linear/non-sRGB data and compression artifacts; Waterways already validates uncompressed/non-normal-map/mipmap assumptions. | `validate_data_textures()` checks readable image data, import flags, block compression, mipmaps, neutral RG preservation, alpha statistics, and decoded vector activity for generated maps. | Keep data texture validation in the acceptance story; visual artifacts may be import/data issues rather than helper bugs. |
 
 ## Implementation Patterns To Preserve
 
@@ -205,7 +211,7 @@ These are the local patterns Option A should protect. They are described here as
 | Jump constants | River/debug/lava use `vec2(0.24, 0.2083333)`; river/debug also use `vec2(0.20, 0.25)` for the second detail layer. | Catlike identifies practical jump values around this family and explains long-loop benefits. | Do not expose or adjust jumps in Option A without a separate spec. |
 | Debug views as product surface | Debug shader exposes Flow Pattern, Arrows, Strength, Foam Mix, Noise Map, and raw channel views. | External examples repeatedly use preview/test views because flow bugs are motion artifacts. | Preserve debug shader parity with river shader when validating. |
 | Shader variant synchronization | River, debug, and lava duplicate the helper. | Godot supports shader includes, but packaging/export/custom-material risks still need local validation. | Prefer a drift check or maintenance note before centralizing code. |
-| Data texture import checks | `validate_data_textures()` checks readable image data, neutral flow, compression, normal-map treatment, and mipmaps. | Catlike and Superposition warn about non-color data, sRGB, and compression artifacts. | Treat import failures as first-class explanations for artifacts. |
+| Data texture import checks | `validate_data_textures()` checks readable image data, neutral flow, decoded vector activity, alpha statistics, compression, normal-map treatment, and mipmaps. | Catlike and Superposition warn about non-color data, sRGB, and compression artifacts; current Waterways debugging needs to distinguish inactive generated maps from shader issues. | Treat import failures, stale resources, and mostly-neutral generated vectors as first-class explanations for artifacts. |
 
 ## Practical Implementation Examples
 
@@ -230,13 +236,13 @@ Validation should prove preservation, not introduce new behavior.
 | Validation idea | What it proves | How to run later | Failure signs |
 | --- | --- | --- | --- |
 | Static helper parity check | River, debug, and lava still use equivalent `FlowUVW` phase, weight, alpha-time, and jump behavior. | Text scan or small script comparing helper signatures and key expressions. | One shader changes phase math, omits alpha, or uses different jump defaults unintentionally. |
-| Flow Pattern motion pass | Reset hiding works in motion. | In a visible Godot editor scene, choose Debug View -> Flow Pattern and watch at least 10 seconds at default, slow, and high `flow_speed`. | Full-surface pulse, sudden reset pop, stuck pattern, or moving pattern disagreeing with arrows. |
+| Flow Pattern motion pass | Reset hiding works in motion. | In a visible Godot 4.6.3 Forward+ scene, regenerate or confirm current generated maps, record decoded vector and alpha stats, choose Debug View -> Flow Pattern, and watch at least 10 seconds at default, slow, and high `flow_speed`. | Full-surface pulse, sudden reset pop, stuck pattern despite active vectors, or moving pattern disagreeing with arrows. |
 | Noise Map / alpha A-B pass | Alpha phase/noise offset desynchronizes resets. | Compare Flow Pattern with a flat alpha map and with varied `flow_foam_noise.a`; also inspect Debug Noise Map. | Whole river changes phase at once, alpha appears flat unexpectedly, or alpha import destroys variation. |
 | Flow Arrows versus pattern pass | Direction decode and tangent/binormal interpretation match visual movement. | Toggle Flow Arrows and Flow Pattern on a curved river with bends and a neutral zone. | Arrows point upstream while pattern moves downstream, arrows rotate at UV seams, or neutral zone moves. |
 | Flow Strength pass | Force modifiers remain visible and bounded. | Vary `flow_base`, `flow_steepness`, `flow_distance`, `flow_pressure`, and `flow_max`; inspect Flow Strength. | Saturated strength everywhere, no response to modifiers, or strength/color mismatch with motion. |
 | Foam Mix pass | Downstream foam/normal path still uses the same two-phase sample family. | Inspect Foam Mix on a river with foam channel variation and compare against default water. | Foam appears detached from flow, debug and default shader disagree, or foam ignores two-phase normals. |
 | Variant parity pass | River/debug/lava remain conceptually synchronized. | Use similar flow maps/material speeds on river and lava variants, then compare flow direction/reset behavior. | Lava behaves like a separate algorithm without a documented reason. |
-| Data texture import pass | Artifacts are not caused by gamma/compression/mipmap import. | Run `Validate Data Textures` and inspect raw Flow Map, Noise Map, and neutral-flow areas. | Missing readable image data, block compression, mipmaps before validation, no neutral RG sample, or flat channels. |
+| Data texture import/generated-map pass | Artifacts are not caused by gamma/compression/mipmap import, stale generated resources, or inactive generated vectors. | Run `Validate Data Textures` and inspect raw Flow Map, Noise Map, decoded vector stats, and neutral-flow areas. | Missing readable image data, block compression, mipmaps before validation, no neutral RG sample, mostly neutral vectors where motion is expected, or flat channels. |
 | Artifact triage pass | Bad output is categorized before shader edits. | When "jelly," seams, or repetition appear, capture Flow Pattern, Flow Arrows, Flow Strength, Noise Map, material settings, texture import settings, and a short screen recording. | Editing `FlowUVW` is proposed before ruling out normal texture, UV scale, flow speed/force, bake gradients, or import settings. |
 | Performance sanity pass | Option A does not increase shader cost. | Count flow-map and normal-map samples per shader mode before and after any future hardening patch. | Extra texture samples or branches appear without spec acceptance. |
 
@@ -244,6 +250,8 @@ Validation should prove preservation, not introduce new behavior.
 
 - The active shader implementation is ordinary Godot spatial shader code and does not depend on compute shaders or custom render devices.
 - Godot shader compilation is necessary but insufficient; two-phase flow correctness is motion-based and must be checked visually.
+- Local Godot 4.6.3 validation paths are GUI `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe` and console `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`.
+- Current River Forward+ runtime validation on 2026-05-22 used Vulkan on AMD Radeon RX 6800 XT and showed Flow Pattern frame changes at default, slow, and high speeds with current generated maps.
 - `hint_screen_texture` and `hint_depth_texture` are adjacent water-shader concerns, but the two-phase flow helper itself does not require screen/depth access.
 - Data textures should remain numeric and linear: lossless/uncompressed import, normal map disabled, mipmaps disabled unless validated for a specific path.
 - If shader include/preprocessor support is considered for centralization, it must be validated in the Godot editor, saved scenes, exports, and custom shader assignment paths before use.
@@ -275,7 +283,7 @@ Validation should prove preservation, not introduce new behavior.
 
 ## Legacy Waterways Reference
 
-This minimal checkout does not include a `legacy/godot-3/addons/waterways` snapshot, although the spec-driven docs mention one may exist in other workspaces.
+This workspace snapshot does not include a `legacy/godot-3/addons/waterways` folder, although the spec-driven docs mention one may exist in other workspaces.
 
 - Relevant legacy files: Not present in this checkout.
 - Behavior to preserve:
@@ -395,8 +403,9 @@ Option A should therefore be framed as an active hardening pass:
   - None beyond shader behavior for this focused feature.
 - Generated asset/resource requirements:
   - Preserve `flow_foam_noise` channel metadata.
-  - Validate neutral flow and alpha/noise behavior for generated/imported maps.
+  - Validate neutral flow, decoded vector activity, source kind, and alpha/noise behavior for generated/imported maps.
 - Acceptance criteria:
+  - Current generated maps have active decoded vectors where visible motion is expected.
   - Flow Pattern debug view shows continuous motion without obvious full-surface pulsing.
   - Flow Arrows match expected decoded direction.
   - Flow Strength reflects modifier parameters.
@@ -423,7 +432,8 @@ Option A should therefore be framed as an active hardening pass:
   - `addons/waterways/shaders/lava.gdshader`
   - `addons/waterways/resources/river_bake_data.gd`
   - `addons/waterways/river_manager.gd`
-  - Future validation scene/docs if created.
+  - `scenes/validation/two_phase_flow_validation.tscn`
+  - `spec-driven/features/two-phase-flow/check_shader_drift.py`
 - Editor-only code:
   - Debug view selection and validation workflow.
 - Runtime-safe code:
@@ -454,9 +464,10 @@ Option A should therefore be framed as an active hardening pass:
 - Automated checks:
   - Static check that `FlowUVW` or equivalent helper exists in expected built-in shaders.
   - Static check that `flow_foam_noise.a` still contributes to shader time where expected.
-  - Data texture validation for neutral flow and readable image data.
+  - Data texture validation for neutral flow, decoded vector activity, source kind, alpha statistics, and readable image data.
 - Human-assisted Godot/editor checks:
-  - Enable Waterways, select a River with generated maps, and switch Debug View to Flow Pattern.
+  - Enable Waterways, select a River with generated maps, regenerate or confirm the current bake, and capture the full decoded-vector and alpha validation Output.
+  - Switch Debug View to Flow Pattern.
   - Observe motion for at least several seconds.
   - Switch to Flow Arrows and Flow Strength to confirm direction and force response.
   - Check default water shader and lava shader if both are part of the feature scope.
@@ -471,6 +482,7 @@ Option A should therefore be framed as an active hardening pass:
   - Full shader output should be checked in Forward+ first.
 - Bake-output checks:
   - `flow_foam_noise.rg` has non-flat directional variation.
+  - Generated maps report meaningful active-vector counts before shader motion is judged.
   - `flow_foam_noise.a` is readable and non-destructive.
   - `dist_pressure` modifiers do not push flow strength into unusable saturation.
 - Runtime/API checks:
@@ -492,14 +504,14 @@ Option A should therefore be framed as an active hardening pass:
 - Centralizing shader code could introduce resource-path or export risks.
 - Exposing advanced parameters could make the material inspector noisy and harder for ordinary users.
 - Visual quality depends heavily on flow-map data and normal texture quality, not only `FlowUVW`.
-- The minimal checkout lacks validation scenes, so human-assisted visible checks must be created or requested before claiming success.
+- Old generated maps or stale `.river_bake.res` resources can still make the shader appear broken, so human-assisted visible checks must regenerate or confirm current bakes before claiming success.
 
 ## Context Challenge Notes
 
 - Possible misread context: Treating authored-data artifacts, high `flow_speed`, high `flow_force`, or repetitive normal textures as bugs in the two-phase algorithm.
 - Evidence: Published two-phase flow specifically solves reset popping, but cannot prevent every tiling or "jelly" artifact if the inputs are poor.
 - Confidence: High.
-- Quick check before patching: Use debug Flow Arrows, Flow Strength, and Flow Pattern together. If arrows/strength are correct but motion looks bad, inspect normal texture, UV scale, flow speed, and generated map gradients before editing `FlowUVW`.
+- Quick check before patching: Regenerate or confirm current generated maps, copy decoded vector and alpha stats, then use debug Flow Arrows, Flow Strength, and Flow Pattern together. If arrows/strength are correct but motion looks bad, inspect normal texture, UV scale, flow speed, stale resources, and generated map gradients before editing `FlowUVW`.
 - User-facing note or question to raise: "The algorithm may be working while the authored data or material settings are causing the artifact. Can we check debug arrows, strength, and pattern before changing the shader?"
 - Outcome after the check: Not yet run.
 

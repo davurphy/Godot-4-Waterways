@@ -10,7 +10,7 @@ The pre-fix and legacy generated-map workflow could collapse to neutral RG flow 
 
 Use this short section as the dashboard for the current spec state. Keep it current; move older detail into the sections below instead of letting stale open questions linger.
 
-- Status: First implementation slice complete locally; Task 12 local screenshot/reload/runtime/performance validation passed, with optional live human editor motion review still available.
+- Status: Feature complete for the first curve-derived river flow slice.
 - Source of truth for open work: `tasks.md`.
 - Last meaningful decision: extend the current serialized `bake_generation_behavior` switch with `curve_only`; do not add a parallel `baking_generation_mode` property until mode UI or a public enum is actually needed.
 - Current source-kind decision: new bakes use `generated_curve_collision_modifiers_bake` or `generated_curve_only_bake`; `generated_downstream_baseline_collision_bake` remains the readable predecessor/foundation source kind.
@@ -23,7 +23,7 @@ The flow-map direction regression slice is complete and changes the starting poi
 
 The current compatibility path is not the final public mode system described below. Legacy comparison is exposed as the script/storage string `bake_generation_behavior = "legacy_collision_only"`, and default generated resources use `SOURCE_KIND_DOWNSTREAM_BASELINE_COLLISION_BAKE` / `generated_downstream_baseline_collision_bake`. The next implementation slice should extend `bake_generation_behavior` rather than adding a second mode property. A public `baking_generation_mode` enum or visible inspector control can still be added later if validation shows the workflow needs it.
 
-The regression fix also already delivered decoded flow-vector diagnostics, occupied/unused UV2 atlas stats, near-neutral Flow Arrows thresholding, WaterSystem alpha-covered flow diagnostics, saved-resource reload proof, and user-facing docs for the current default behavior. This implementation slice added no-collider / zero-layer curve bakes, true `Curve Only` behavior, scriptable behavior/source-kind naming, exact blank support fallback, and a canonical curved/seam/bank-helper validation scene. Task 12 has now recorded local screenshots, save/reload/runtime-style proof, and performance notes for the new scene. Remaining scope is optional live human editor motion review and any future directional collision RG blending.
+The regression fix also already delivered decoded flow-vector diagnostics, occupied/unused UV2 atlas stats, near-neutral Flow Arrows thresholding, WaterSystem alpha-covered flow diagnostics, saved-resource reload proof, and user-facing docs for the current default behavior. This implementation slice added no-collider / zero-layer curve bakes, true `Curve Only` behavior, scriptable behavior/source-kind naming, exact blank support fallback, and a canonical curved/seam/bank-helper validation scene. Task 12 has now recorded local screenshots, save/reload/runtime-style proof, and performance notes for the new scene. Optional live human editor motion review and any future directional collision RG blending are deferred follow-ups, not part of the completed slice.
 
 ## Goals
 

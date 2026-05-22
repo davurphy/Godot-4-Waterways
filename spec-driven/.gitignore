@@ -1,0 +1,15 @@
+# Local scratch/output created while working through specs.
+.cache/
+scratch/
+tmp/
+temp/
+
+# Disposable logs and temporary editor files.
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Generated visual artifacts from validation runs.
+screenshots/
+*.png

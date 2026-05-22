@@ -6,11 +6,12 @@ This feature preserves, documents, and validates Waterways' existing two-phase f
 
 ## Current Truth
 
-- Status: Draft, created from accepted research Option A and the 2026-05-21 design review.
+- Status: Rebased against the completed flow-map direction regression and curve-derived river flow slices on 2026-05-22. This remains a preservation/validation feature, not a shader rewrite.
 - Source of truth for open work: `tasks.md`.
-- Last meaningful decision: preserve existing two-phase behavior first; do not rewrite shader math without visual evidence and a spec update.
-- Known deferred items: shared `.gdshaderinc`, advanced jump/phase controls, runtime sampling API changes, WaterSystem/Buoyant changes, bake-pipeline redesign, shader-tier presets.
-- Current non-goals that are easy to accidentally reopen: shader rewrite, new bake passes, new texture packing, custom importer, Gerstner/FFT/compute wakes, broad material redesign.
+- Last meaningful decision: the old stuck Flow Pattern observation must be retested against current generated River maps before touching `FlowUVW`; the old generated-map blockers are no longer valid evidence against the two-phase shader.
+- Current Waterways baseline this spec depends on: default River bakes use downstream baseline RG, `curve_only` exists, near-neutral Flow Arrows are thresholded, `Validate Data Textures` reports source kind, decoded vector stats plus alpha stats, and generated River resources are saved as explicit bake data.
+- Known deferred items: shared `.gdshaderinc`, advanced jump/phase controls, runtime sampling API changes, WaterSystem/Buoyant changes, bake-pipeline redesign, shader-tier presets, and broad material-control redesign.
+- Current non-goals that are easy to accidentally reopen: shader rewrite, new bake passes, new texture packing, custom importer, Gerstner/FFT/compute wakes, broad material redesign, and using pre-2026-05-22 near-neutral generated maps as proof that `FlowUVW` is broken.
 
 ## Goals
 
@@ -37,15 +38,18 @@ This feature preserves, documents, and validates Waterways' existing two-phase f
   - `addons/waterways/shaders/river.gdshader`, `river_debug.gdshader`, and `lava.gdshader` define `FlowUVW`.
   - All three shader paths add `flow_foam_noise.a` to shader time.
   - `RiverBakeData.DEFAULT_CHANNEL_METADATA` documents packed flow, foam, and phase/noise channels.
-  - `River -> Validate Data Textures` checks readable data, import settings, neutral RG preservation, and alpha phase/noise min/max/range/state.
+  - Current generated River maps use a downstream curve/UV baseline for RG in curve-based modes, with collision data as optional support maps.
+  - `River -> Validate Data Textures` checks readable data, import settings, neutral RG preservation, decoded flow-vector stats, and alpha phase/noise min/max/range/state.
   - `spec-driven/features/two-phase-flow/check_shader_drift.py` guards the shader and menu contract.
 - Workspace caveat:
   - `project.godot` and `scenes/validation/two_phase_flow_validation.tscn` now exist locally.
-  - Local headless Godot 4.6.2 Mono crashes before scene checks complete, so visible editor validation is still required.
-- Agent confidence in the premise: high that the current technique should be preserved; medium that existing validation fixtures are sufficient until they are restored or recreated.
+  - Known working Godot 4.6.3 paths are GUI `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe` and console `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`.
+  - Visible Forward+ runtime validation has now captured current generated-map data and timed Flow Pattern frame deltas; literal hand-clicked editor preview/menu validation is still useful before full closure.
+- Agent confidence in the premise: high that the current technique should be preserved; medium-high that the old stuck validation attempt was entangled with pre-fix generated-map behavior rather than proving a shader defect.
 - Possible expected-behavior explanations to rule out before patching:
   - stale generated maps
   - unsaved scene-owned bake resources
+  - old resources generated before downstream-baseline or curve-only behavior existed
   - flat or destroyed alpha phase/noise channel
   - lossy or sRGB/imported data texture settings
   - excessive `flow_speed`, `flow_base`, `flow_steepness`, `flow_distance`, `flow_pressure`, or `flow_max`
@@ -172,7 +176,7 @@ Shared systems must not hard-code:
 
 - AT1: `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` agree that Option A is preservation plus validation, not shader rewrite.
 - AT2: A static drift guard or manual checklist confirms `FlowUVW`, RG decode, alpha time offset, primary/secondary jump constants, and required debug modes across river, debug, and lava shaders.
-- AT3: `Validate Data Textures` evidence includes readable data, source/import notes, neutral RG reporting, and alpha phase/noise statistics.
+- AT3: `Validate Data Textures` evidence includes readable data, source/import notes, neutral RG reporting, decoded flow-vector statistics, and alpha phase/noise statistics.
 - AT4: Debug shader scale differences, especially Flow Strength steepness scaling, are classified as intentional or corrected under a spec update.
 - AT5: A visible Godot 4.6+ Forward+ validation run records scene/workflow, plugin state, renderer, device, Output text, material settings, and visible behavior.
 - AT6: Mobile and Compatibility renderer checks are run or explicitly marked unvalidated.
@@ -230,6 +234,9 @@ Shared systems must not hard-code:
 | Do validation fixtures exist in this checkout? | Yes. `project.godot` and `scenes/validation/two_phase_flow_validation.tscn` now exist. | 2026-05-21 | This was originally missing; visible validation is still unrun. |
 | Is the debug steepness scale difference intentional? | Yes. `river_debug.gdshader` keeps `steepness_map * 8.0` as debug-only diagnostic amplification while river/lava keep `* 4.0`. | 2026-05-21 | Flow Strength is qualitative debug evidence, not exact parity evidence. |
 | Should the drift guard be scripted or manual? | Scripted. | 2026-05-21 | `check_shader_drift.py` records pass/fail markers for shaders and `river_menu.gd`. |
+| Does the first stuck Flow Pattern attempt prove a `FlowUVW` defect? | No. It is stale evidence after the 2026-05-22 generated-map changes and must be retested. | 2026-05-22 | Flow-map direction and curve-derived bakes changed the generated data that feeds the shader. |
+| Should visible retest regenerate or validate current maps first? | Yes. Rebuild/validate the River map before judging two-phase motion. | 2026-05-22 | The current Output should include decoded vector stats and alpha stats. |
+| Which local Godot executables should validation use? | Use the Godot 4.6.3 GUI and console builds under `C:\Users\pc\Desktop\Godot_v4.6.3-stable\`. | 2026-05-22 | GUI path: `Godot_v4.6.3-stable_win64.exe`; console path: `Godot_v4.6.3-stable_win64_console.exe`. |
 
 ## Decision Log
 
@@ -240,3 +247,6 @@ Shared systems must not hard-code:
 | 2026-05-21 | Treat missing validation fixtures as a planning blocker, not an implementation detail. | The feature cannot prove visual behavior without a real scene or source project workflow. |
 | 2026-05-21 | Add a static drift guard under the feature folder. | The contract is duplicated intentionally and needs a cheap regression check. |
 | 2026-05-21 | Add alpha phase/noise statistics to River data validation. | Flat or destroyed alpha must be visible in `RIVER_DATA_TEXTURE_TEST` before shader triage. |
+| 2026-05-22 | Rebase this feature on the current downstream-baseline / curve-derived River bake behavior. | The two-phase shader consumes generated maps, and those maps now carry useful downstream RG by default. |
+| 2026-05-22 | Keep `FlowUVW` unchanged until a fresh current-baseline visible validation run proves a shader-specific issue. | The old stuck Flow Pattern evidence was collected before the generated-map blockers were resolved. |
+| 2026-05-22 | Treat the current Forward+ runtime probe as positive River motion evidence, not as a shader-change trigger. | Fresh generated maps report active occupied vectors and varied alpha; timed Flow Pattern frames changed at default, slow, and high speeds. |

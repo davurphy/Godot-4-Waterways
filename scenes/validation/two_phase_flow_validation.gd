@@ -12,7 +12,7 @@ const VALIDATION_FLOW_PRESSURE: float = 1.5
 const VALIDATION_FLOW_MAX: float = 4.0
 const VALIDATION_UV_SCALE: Vector3 = Vector3(2.0, 2.0, 1.0)
 
-@export var auto_refresh_maps: bool = true:
+@export var auto_refresh_maps: bool = false:
 	set(value):
 		auto_refresh_maps = value
 		if auto_refresh_maps:
@@ -84,7 +84,8 @@ func _apply_existing_validation_defaults() -> void:
 	var river: Node = _get_validation_river()
 	if river == null:
 		return
-	_apply_validation_material_settings(river)
+	if auto_refresh_maps:
+		_apply_validation_material_settings(river)
 	_apply_debug_view()
 
 

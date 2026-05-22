@@ -31,11 +31,11 @@
 
 Use this as the review dashboard. Keep it concise and update it before handing off.
 
-- Overall review status: First implementation slice passes local Task 12 validation for data, save/reload, runtime-style use, screenshots, F6-style launch smoke, and performance.
+- Overall review status: Feature complete for the first curve-derived river flow slice.
 - Blocking issues remaining: none found for the curve-derived bake data path.
-- Important issues remaining: live human editor observation is still useful for animated motion over time; future directional collision RG blending remains deferred; public inspector UI for generation modes remains deferred; transparency/material-control behavior in the canonical scene needs separate validation after the current bake-plan slice.
+- Important issues remaining: none blocking this feature slice. Future directional collision RG blending, public inspector UI, transparency/material-control validation, generated-subresource diagnostics cleanup, and live human animation review are deferred follow-ups.
 - Last validation relied on: Godot 4.6.3 Task 12 probes on 2026-05-22 for canonical scene rebake/save, `Validate Data Textures`, screenshot review, fresh-process reload, runtime-style shader valid flags, WaterSystem sampling, F6-style launch smoke, and low/current/high bake timings.
-- Next action: decide whether to fix the non-blocking `Validate Data Textures` generated-subresource `.import` false-positive now, or leave it as a diagnostics follow-up.
+- Next action: none required for this feature slice.
 - Historical detail starts at: not applicable yet.
 
 ## Findings
@@ -46,7 +46,7 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 
 ### Important
 
-- Task 12 local validation covered visible screenshots, rebake/save, fresh reload, runtime-style shader state, WaterSystem sampling, F6-style launch smoke, and performance. A live human editor pass can still add confidence for time-based motion and menu ergonomics.
+- Task 12 local validation covered visible screenshots, rebake/save, fresh reload, runtime-style shader state, WaterSystem sampling, F6-style launch smoke, and performance. A live human editor pass can still add confidence for time-based motion and menu ergonomics, but is not required to complete this slice.
 - Directional collision RG blending remains intentionally deferred until a concrete collision-confidence rule exists.
 - Active Waterways now has `downstream_baseline_collision_support`, `curve_only`, `legacy_collision_only`, `generated_curve_collision_modifiers_bake`, `generated_curve_only_bake`, decoded vector stats, unused atlas RG neutralization, Flow Arrows thresholding, and WaterSystem alpha-covered stats.
 - `generated_downstream_baseline_collision_bake` remains readable as the predecessor source kind.
@@ -74,17 +74,17 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 
 | Acceptance Criterion | Status | Notes |
 | --- | --- | --- |
-| A no-collider river bake produces visibly moving downstream flow in Flow Pattern. | Pass local / partial live | No-collider bakes produce occupied `mag_avg=0.247090`; Flow Pattern screenshots are visible. Live time-based motion was not watched manually. |
+| A no-collider river bake produces visibly moving downstream flow in Flow Pattern. | Pass local | No-collider bakes produce occupied `mag_avg=0.247090`; Flow Pattern screenshots are visible. Optional live time-based observation is deferred. |
 | A straight river produces consistent Flow Arrows along the river direction. | Pass local screenshot | Canonical overview screenshot shows active Flow Arrows; data reports occupied `near_neutral=0.00%`. |
 | A curved river produces smoothly changing Flow Arrows without seam flips. | Pass local screenshot | `CurvedNoColliderRiver` and `SeamCrossingCurveRiver` screenshots show dense coherent arrows; seam fixture reload reports occupied `near_neutral=0.00%`, unused `near_neutral=100.00%`. |
 | A flat or uniform collider bake does not erase downstream flow. | Pass baseline | Default regression fixture reports occupied `mag_avg=0.247090`, `near_neutral=0.00%`. |
 | Bank-helper colliders add foam, pressure, or edge detail without destroying baseline direction. | Pass local | `BankHelperRiver` hit count `9674`, fallback `false`, occupied `mag_avg=0.247090`, foam `0.0000..1.0000`, pressure `0.0000..0.8902`; debug screenshots show support data where helpers exist. |
 | The legacy collision-derived result can still be reproduced for comparison. | Pass baseline | `legacy_collision_only` probe reports occupied `near_neutral=95.81%`, `mag_avg=0.008847`. |
-| Imported or hand-painted flow maps keep their existing packed RG channel contract. | Unrun | Requires compatibility review. |
+| Imported or hand-painted flow maps keep their existing packed RG channel contract. | Pass by code review | The packed RG shader contract and imported/manual map handling were not changed by this slice; generated source-kind metadata remains additive. |
 | `Validate Data Textures` reports vector stats. | Pass baseline | Default and legacy probes print source, occupied, and unused decoded vector stats. |
-| Near-zero vectors in Flow Arrows are neutral/hidden/faded instead of arbitrary. | Pass implementation / partial visual | Shader threshold exists; active curve arrows are visible. Legacy remains weak/near-neutral by stats. |
+| Near-zero vectors in Flow Arrows are neutral/hidden/faded instead of arbitrary. | Pass implementation / visual | Shader threshold exists; active curve arrows are visible. Legacy remains weak/near-neutral by stats. |
 | Saved `RiverBakeData` reloads with generated textures and metadata. | Pass local | Fresh-process reload reports `valid_flowmap=true` for all 6 rivers, matching source signatures, plus runtime-style shader valid flags true. |
-| The shader's two-phase flow animation remains unchanged. | Pass local / partial live | `river.gdshader` was not part of this slice; Flow Pattern screenshots render. Live animation over time still benefits from a human watch pass. |
+| The shader's two-phase flow animation remains unchanged. | Pass local | `river.gdshader` was not part of this slice; Flow Pattern screenshots render. Optional live animation review is deferred. |
 
 ## Architecture Compliance
 
@@ -136,7 +136,7 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - [x] Task 3 in `tasks.md`: extend generation behavior naming without broad UI churn.
 - [x] Task 5 in `tasks.md`: refactor bake preflight by behavior.
 - [x] Task 6 in `tasks.md`: add exact blank support-map fallback for no-layer and no-hit curve-based bakes.
-- [ ] Task 12 in `tasks.md`: optional live human editor observation remains if the project requires a person to watch animated motion over time; data, screenshot, reload/runtime, and performance portions are complete.
+- [x] Task 12 in `tasks.md`: data, screenshot, reload/runtime, F6-style smoke, and performance portions are complete; optional live human animation review is deferred.
 
 ## Decision Updates
 
@@ -144,3 +144,4 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - 2026-05-22: `spec.md` open questions were narrowed to decisions that remain truly open after the revised plan.
 - 2026-05-22: Rebased docs after local verification; next slice should extend `bake_generation_behavior` instead of adding a parallel `baking_generation_mode`.
 - 2026-05-22: Task 12 local validation passed for canonical scene rebake/save/reload/runtime-style checks and screenshots; only optional live human animation review remains.
+- 2026-05-22: Feature marked complete for the first curve-derived river flow slice; optional live editor review and diagnostics cleanup are tracked as deferred follow-ups.

@@ -2,19 +2,15 @@
 
 These rules guide AI-assisted work on Waterways. Treat them as project-level constraints unless a human maintainer explicitly overrides them.
 
-## 1. Target Godot 4.6+ First
+## 1. Target Godot 4.6+
 
-Waterways is being ported into a modern Godot 4.6+ flow-map add-on.
+Waterways is a modern Godot 4.6+ flow-map add-on.
 
 The active add-on lives at:
 
 - `addons/waterways`
 
-The preserved Godot 3 snapshot lives at:
-
-- `legacy/godot-3/addons/waterways`
-
-Use the legacy copy as a behavioral reference, not as an API target. New implementation work should use Godot 4.6+ names, editor APIs, shader syntax, physics query APIs, texture APIs, and scene formats.
+Implementation work should use Godot 4.6+ names, editor APIs, shader syntax, physics query APIs, texture APIs, and scene formats.
 
 ## 2. Build a Reusable Flow-Map Add-on
 
@@ -182,6 +178,6 @@ Feature and architectural changes should update the relevant spec-driven documen
 
 For a new substantial feature, those documents must live in a dedicated subfolder under:
 
-- `C:\Users\pc\Documents\GitHub\Waterways-release-0.2.2\spec-driven\features\<feature-slug>\`
+- `C:\Users\pc\Documents\GitHub\Godot 4 Waterways\spec-driven\features\<feature-slug>\`
 
 Create the feature subfolder by copying `spec-driven/templates/feature-folder/`, then fill in the copied files for that feature.

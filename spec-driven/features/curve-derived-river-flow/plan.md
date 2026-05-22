@@ -23,13 +23,13 @@ Important coordinate-space decision: do not encode raw world X/Z direction into 
 
 Keep this section short and update it whenever the plan changes.
 
-- Implementation status: first no-layer/Curve Only/source-kind/blank-support/validation-scene slice is complete locally.
+- Implementation status: first no-layer/Curve Only/source-kind/blank-support/validation-scene slice is complete.
 - Expert review status: rebased against active Waterways and updated after Task 12 local validation.
 - Review corrections now captured below: exact padded/unpadded bake image flow; exact no-collider support-map values; concrete first-pass collision modifier scope.
 - Architectural decisions: extend the current serialized `bake_generation_behavior` string with `curve_only`; treat `generated_downstream_baseline_collision_bake` as a readable predecessor; defer visible mode UI and any public `baking_generation_mode` enum.
 - Last validation that proves the current foundation works: Godot 4.6.3 local probes on 2026-05-22, including default occupied `mag_avg=0.247090`, unused atlas neutrality, legacy occupied `near_neutral=95.81%`, WaterSystem alpha-covered default `mag_avg=0.294198`, zero-layer/default fallback, no-hit/default fallback, curve-only fallback, canonical scene rebake/save/reload/runtime-style checks, focused screenshots, and low/current/high bake timings.
 - Current checklist: `tasks.md`, rebased to mark regression-delivered pieces as complete or superseded.
-- Next planned implementation slice: optional live human editor motion review, or the non-blocking generated-subresource `.import` diagnostics cleanup if preferred.
+- Next planned implementation slice: none for this feature; optional live human editor motion review and generated-subresource `.import` diagnostics cleanup are deferred follow-ups.
 - Sections below that are historical or superseded: none.
 
 ## Post-Regression Rebase Notes

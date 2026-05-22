@@ -70,7 +70,7 @@ Runtime responsibilities:
 
 Shared code must not depend on:
 
-- <Editor-only state, legacy Godot 3 APIs, one scene layout, one material preset, or one project-specific asset>
+- <Editor-only state, obsolete APIs, one scene layout, one material preset, or one project-specific asset>
 
 ## Data and Extension Model
 

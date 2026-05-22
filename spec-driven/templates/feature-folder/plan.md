@@ -45,10 +45,6 @@ Validation layer:
 
 - <Test scene/tool/test/procedure>
 
-Legacy reference layer:
-
-- <Godot 3 behavior being preserved or intentionally changed>
-
 ## Godot Components
 
 - Nodes:
@@ -138,4 +134,4 @@ For async, rendering, editor, or bake work, answer these explicitly before imple
 
 ## Migration and Compatibility
 
-Describe any Godot 3-to-4 behavior, data, scene, resource, shader, or API compatibility concerns.
+Describe any behavior, data, scene, resource, shader, or API compatibility concerns.

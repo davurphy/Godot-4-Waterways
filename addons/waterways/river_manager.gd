@@ -1770,8 +1770,12 @@ func _append_texture_data_validation(label: String, texture: Texture2D, expect_n
 
 func _append_data_texture_import_validation(label: String, texture: Texture2D, failures: Array, notes: Array) -> void:
 	var path := texture.resource_path
-	if path.is_empty():
-		notes.append(label + " source=generated/resource-owned")
+	var generated_bake_source_kind := _get_generated_bake_source_kind_for_texture(label, texture)
+	if path.is_empty() or not generated_bake_source_kind.is_empty():
+		var source_note := label + " source=generated/resource-owned"
+		if not generated_bake_source_kind.is_empty():
+			source_note += " source_kind=" + generated_bake_source_kind
+		notes.append(source_note)
 		return
 	notes.append(label + " source=" + path)
 	if not path.begins_with("res://"):
@@ -1790,6 +1794,22 @@ func _append_data_texture_import_validation(label: String, texture: Texture2D, f
 		failures.append(label + " import has mipmaps enabled before neutral-flow/mask stability is validated")
 	if import_text.find("\"vram_texture\": true") != -1 or import_text.find("path.s3tc=") != -1:
 		failures.append(label + " import uses VRAM/block-compressed data")
+
+
+func _get_generated_bake_source_kind_for_texture(label: String, texture: Texture2D) -> String:
+	if texture == null or bake_data == null:
+		return ""
+	var source_kind := String(bake_data.get("source_kind"))
+	if not source_kind.begins_with("generated_"):
+		return ""
+	var stored_texture := bake_data.get(label) as Texture2D
+	if stored_texture == texture:
+		return source_kind
+	var bake_path := bake_data.resource_path
+	var texture_path := texture.resource_path
+	if not bake_path.is_empty() and texture_path.begins_with(bake_path + "::"):
+		return source_kind
+	return ""
 
 
 func _append_neutral_flow_validation(label: String, image: Image, texture_path: String, failures: Array, notes: Array) -> void:

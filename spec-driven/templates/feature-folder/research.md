@@ -39,7 +39,7 @@ Before broad research, record whether the request may be based on missing contex
 
 ## Active Add-on Baseline
 
-Record what the current Godot 4.6+ add-on already does before comparing external tools or legacy code.
+Record what the current Godot 4.6+ add-on already does before comparing external tools or older project notes.
 
 - Relevant active files:
 - Current behavior:
@@ -58,7 +58,7 @@ Record what the current Godot 4.6+ add-on already does before comparing external
 - What user or agent premise might be wrong, incomplete, or based on missing scene/data context?
 - What Godot 4.6+ constraints could change the design?
 - Which parts are editor-only, runtime-only, or shared?
-- What legacy Waterways behavior should be preserved, changed, or removed?
+- What existing Waterways behavior should be preserved, changed, or removed?
 - What must the spec require if this research is correct?
 - What should the plan explicitly avoid?
 
@@ -129,17 +129,17 @@ Record assumptions and likely bottlenecks before planning.
 - Mobile, Compatibility, or VR constraints:
 - Recommended budget or measurement approach:
 
-## Legacy Waterways Reference
+## Existing Waterways Reference
 
-Use this section when the feature needs to preserve or intentionally change behavior from the Godot 3 add-on.
+Use this section when the feature needs to preserve or intentionally change existing Waterways behavior.
 
-- Relevant legacy files:
+- Relevant existing files:
 - Behavior to preserve:
 - Behavior to change:
-- Obsolete APIs to avoid:
+- Obsolete or fragile APIs to avoid:
 - Risks discovered in `audit/code-audit.md`:
 - What belongs in active Godot 4.6+ code:
-- What should remain legacy-only:
+- What should remain out of scope:
 
 ## Options
 

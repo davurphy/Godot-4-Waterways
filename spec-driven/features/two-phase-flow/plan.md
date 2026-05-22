@@ -23,15 +23,26 @@ This feature should produce evidence and guardrails, not a shader rewrite. Any b
 
 ## Current Truth
 
-- Implementation status: Drift guard, alpha diagnostics, user docs, import docs, and validation scaffolding are implemented. Shader math, shader samples, bake passes, GPU readbacks, and public runtime APIs remain unchanged.
+- Implementation status: Drift guard, alpha diagnostics, generated `.river_bake.res` source-kind reporting, user docs, import docs, validation scaffolding, and a 2026-05-22 document rebase are complete. Shader math, shader samples, bake passes, GPU readbacks, and public runtime APIs remain unchanged.
 - Closed architectural decisions:
   - `river_debug.gdshader`'s `steepness_map * 8.0` is classified as intentional debug-only diagnostic amplification; river and lava keep `* 4.0`.
   - Drift protection is scripted in `spec-driven/features/two-phase-flow/check_shader_drift.py`.
   - Fixture availability is resolved locally: `project.godot` and `scenes/validation/two_phase_flow_validation.tscn` now exist.
-- Last validation that proves the static/data plan still works: `python spec-driven/features/two-phase-flow/check_shader_drift.py` passed 54 checks, and user-provided `RIVER_DATA_TEXTURE_TEST` output showed neutral RG plus varied alpha on 2026-05-21. The first visible Flow Pattern attempt reported stuck motion with no warnings/errors, so adjusted-fixture retest is pending.
-- Current workspace caveat: local headless Godot 4.6.2 Mono crashes before scene checks complete. Visible editor validation is still required before closure.
-- Next planned implementation slice: human-assisted Forward+ retest using the adjusted validation fixture, then record results and close the review only if visible motion passes.
-- Sections below that are historical or superseded: None.
+  - The feature now builds on current generated River behavior: downstream-baseline RG by default, true `curve_only`, decoded vector diagnostics, near-neutral Flow Arrows thresholding, and explicit generated bake resources.
+- Last validation that proves the static/data plan still works: `python spec-driven/features/two-phase-flow/check_shader_drift.py` passed 54 checks on 2026-05-22, and the 2026-05-22 current `RIVER_DATA_TEXTURE_TEST` output for `TwoPhaseFlowRiver` records source kind, decoded vector diagnostics, active/near-neutral counts, and varied alpha.
+- Current workspace caveat: visible runtime validation now covers the current River baseline in Forward+, and bounded scene-launch smoke checks cover Forward+, Mobile, and Compatibility. Literal hand-clicked editor preview/menu validation remains useful because two-phase correctness is motion-based and editor redraw/TIME behavior was part of the original uncertainty.
+- Current local Godot paths: GUI `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe`; console `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe`.
+- Latest planned validation slice result: the current `two_phase_flow_validation.tscn` fixture was rebaked and validated through visible Godot 4.6.3 Forward+ on 2026-05-22; decoded vector stats, alpha stats, debug-view screenshots, and timed Flow Pattern frame deltas are recorded in `validation.md`.
+- Sections below that are historical or superseded: any language treating the first stuck Flow Pattern attempt as live blocking evidence should be read as pre-2026-05-22 context only.
+
+## Post-Flow-Map Rebase Notes
+
+The flow-map direction regression and curve-derived river flow slices changed the data that this feature validates. The two-phase shader now normally receives generated River maps whose occupied tiles have useful local downstream RG instead of near-neutral collision-derived interiors. Therefore:
+
+- The 2026-05-21 stuck Flow Pattern attempt is stale evidence; it may have been blocked by generated-map input, validation fixture setup, editor preview state, or stale resources.
+- A fresh visible validation must generate or reload current bake resources before judging `FlowUVW`.
+- `Validate Data Textures` output should now include decoded flow-vector stats as well as alpha phase/noise stats.
+- No shader math change is justified unless current-baseline Flow Pattern, Flow Arrows, Flow Strength, Noise Map, and Foam Mix disagree after the generated data is proven useful.
 
 ## Premise Check
 
@@ -41,16 +52,17 @@ This feature is release hardening and maintainability work, not a response to a 
   - `FlowUVW` exists in the active river, debug, and lava shaders.
   - `flow_foam_noise.rg` is already used as packed flow, `b` as foam, and `a` as phase/noise offset.
   - River baking already generates `flow_foam_noise` and `dist_pressure`.
+  - Current default River baking writes a useful downstream RG baseline in occupied atlas tiles and keeps collision data as optional support.
   - Debug views already expose Flow Pattern, Flow Arrows, Flow Strength, Noise Map, and Foam Mix.
-  - `validate_data_textures()` already checks readable data, import settings, and neutral RG preservation for flow maps.
+  - `validate_data_textures()` already checks readable data, import settings, neutral RG preservation, decoded vector stats, and alpha phase/noise stats for flow maps.
 - Evidence against a broad implementation pass:
   - There is no confirmed visual defect in `FlowUVW`.
   - External references support the current two-phase technique.
-  - Many bad-looking results can come from authored flow data, normal texture repetition, excessive `flow_speed`, excessive flow force, import settings, or stale generated maps.
+  - Many bad-looking results can come from authored flow data, normal texture repetition, excessive `flow_speed`, excessive flow force, import settings, stale generated maps, or resources baked before the downstream-baseline/curve-derived changes.
 - User-facing pushback or clarification needed before patching:
   - If a visible artifact is reported, first check Flow Pattern, Flow Arrows, Flow Strength, Noise Map, material settings, and data texture validation before editing `FlowUVW`.
 - Smallest check that can falsify the premise:
-  - In a visible Godot 4.6+ scene with a generated River, switch `River -> Debug View -> Display Debug Flow Pattern` and watch for at least 10 seconds. Obvious full-surface reset popping, synchronized pulsing, stuck flow, or directional disagreement with Flow Arrows would justify deeper shader investigation.
+  - In a visible Godot 4.6.3 scene with current generated maps and decoded vector stats recorded, switch `River -> Debug View -> Display Debug Flow Pattern` and watch for at least 10 seconds. Obvious full-surface reset popping, synchronized pulsing, stuck flow despite active vectors, or directional disagreement with Flow Arrows would justify deeper shader investigation.
 
 ## Layers
 
@@ -83,7 +95,7 @@ Validation layer:
 - Add a validation matrix in `validation.md` that maps each required behavior to static, data, shader, visual, and human-assisted evidence.
 - Prefer existing validation scenes where they cover the behavior.
 - Add a dedicated two-phase-flow validation scene only if existing scenes cannot make reset hiding, alpha/noise, neutral flow, and lava behavior obvious.
-- Human-assisted visible Godot validation is required before the feature can be called complete.
+- Visible Godot validation is required before the feature can be called complete. Current River runtime evidence and renderer scene-launch smoke checks are recorded; manual editor preview and lava should be run or explicitly deferred before final closure.
 
 Legacy reference layer:
 
@@ -116,10 +128,9 @@ Legacy reference layer:
 - Autoloads:
   - None planned.
 - Scenes:
-   - Current minimal checkout caveat: no source validation scenes are present locally.
-   - Prefer existing `scenes/validation/waterways_authoring_smoke_validation.tscn` for River debug views if source fixtures are restored and it visibly covers the required cases.
-   - Use `scenes/validation/lava_material_validation.tscn` for lava shader animation if source fixtures are restored and it is suitable.
-   - Use the local `scenes/validation/two_phase_flow_validation.tscn` fixture for curved flow, neutral flow, alpha/noise variation, and reset behavior.
+  - Use the local `scenes/validation/two_phase_flow_validation.tscn` fixture for curved flow, neutral flow, alpha/noise variation, decoded vector stats, and reset behavior.
+  - Prefer existing `scenes/validation/waterways_authoring_smoke_validation.tscn` for broader River debug views if it visibly covers the required cases.
+  - Use `scenes/validation/lava_material_validation.tscn` for lava shader animation if it is suitable.
 - Validation scenes:
   - Any new scene must make failure obvious with fixed camera framing, a curved river, a neutral-flow region, visible debug modes, and expected results recorded in `validation.md`.
 
@@ -193,13 +204,15 @@ Resource ownership and save/load behavior:
 
 This feature preserves the current bake flow. It does not redesign or replace it.
 
-1. River bake inputs come from the existing River shape, UV2 mesh layout, collision helpers, bake settings, and noise texture.
-2. Existing filter passes generate flow, foam, distance, pressure, and tiled noise intermediates.
-3. `combine_pass.gdshader` packs blurred flow R/G, foam B, and tiled noise A into `flow_foam_noise`.
-4. The bake writes `dist_pressure` from distance and pressure intermediates.
-5. `RiverBakeData` records texture references, texture sizes, content rect, padded atlas layout, UV2 side count, bounds, channel metadata, import profile, source metadata, and bake settings.
-6. River materials receive `i_flowmap`, `i_distmap`, `i_valid_flowmap`, and `i_uv2_sides`.
-7. Debug views and default shaders consume the same generated data.
+1. River bake inputs come from the existing River shape, UV2 mesh layout, collision helpers when used, bake settings, and noise texture.
+2. In curve-based behaviors, occupied atlas tiles receive local downstream RG from the River/UV2 baseline. `legacy_collision_only` remains available for comparison.
+3. Collision passes still generate foam, distance, pressure, and legacy collision-derived flow when collision support is applicable.
+4. If `curve_only`, `baking_raycast_layers == 0`, or no collider pixels are hit in default behavior, the bake keeps downstream RG and uses exact blank support maps.
+5. `combine_pass.gdshader` packs primary flow R/G, foam B, and tiled noise A into `flow_foam_noise`.
+6. The bake writes `dist_pressure` from distance and pressure intermediates or the blank support fallback.
+7. `RiverBakeData` records texture references, texture sizes, content rect, padded atlas layout, UV2 side count, bounds, channel metadata, import profile, source metadata, decoded vector diagnostics, generation behavior, and bake settings.
+8. River materials receive `i_flowmap`, `i_distmap`, `i_valid_flowmap`, and `i_uv2_sides`.
+9. Debug views and default shaders consume the same generated data.
 
 Do not add new bake passes, data textures, import rules, or storage paths for Option A unless a validation failure proves the existing data is insufficient and the spec is updated first.
 
@@ -259,6 +272,7 @@ Implemented data-validation change:
 
 - `validate_data_textures()` adds lightweight alpha statistics to the `RIVER_DATA_TEXTURE_TEST` output: `alpha_min`, `alpha_max`, `alpha_range`, `alpha_state`, and sampled count for `flow_foam_noise.a`.
 - Generated/resource-owned and imported flow maps now produce sampled RG and alpha notes without turning this into a bake-pipeline redesign.
+- Generated textures embedded in explicit `.river_bake.res` resources are treated as generated/resource-owned during validation and include `source_kind` in the `RIVER_DATA_TEXTURE_TEST` output.
 
 Do not make data validation responsible for proving visual quality. It only proves the shader is receiving plausible numeric inputs.
 
@@ -377,15 +391,16 @@ Files and changes explicitly not planned:
    - The script verifies helper contract and key shader expressions across river, debug, and lava.
    - Intentional variant differences are recorded.
 5. Data texture validation hardening:
-   - Status: implemented; visible Output capture still pending.
+   - Status: implemented; current-baseline Output now captures source kind, decoded vector stats, and alpha stats.
    - Document required `Validate Data Textures` evidence.
    - Added alpha/noise reporting as a required validation improvement.
 6. Debug-view validation:
-   - Status: procedure written; visible run pending.
+   - Status: current River Forward+ runtime probe recorded Noise Map, Flow Pattern, Flow Arrows, Flow Strength, and Foam Mix. Literal editor preview/menu validation remains a residual check.
    - Reuse or create a validation scene that makes motion, direction, strength, neutral flow, and noise offset visible.
 7. Human-assisted Godot validation:
-   - Ask a human to run visible Godot 4.6+ checks in Forward+ first.
-   - Record renderer, Godot version, scene path, steps, console output, visible behavior, and screenshots or clips if available.
+   - Current River runtime/F6-style validation is recorded.
+   - If closure needs editor-specific evidence, ask a human to run visible Godot 4.6.3 editor/menu checks in Forward+.
+   - Record renderer, Godot version, scene path, steps, console output, visible behavior, and screenshots or clips if additional checks are run.
 8. Review and closure:
    - Review against `spec.md` and this plan.
    - Move any shader include, parameter exposure, runtime sampling, or bake redesign ideas into deferred follow-up notes.
@@ -415,13 +430,14 @@ Files and changes explicitly not planned:
   - Run `python spec-driven/features/two-phase-flow/check_shader_drift.py` for the `FlowUVW` contract in `river.gdshader`, `river_debug.gdshader`, and `lava.gdshader`.
   - The same script checks that `TIME * flow_speed + flow_foam_noise.a` remains in the three shader paths.
   - The same script checks debug mode IDs and menu entries for Flow Pattern, Flow Arrows, Flow Strength, Noise Map, and Foam Mix.
-  - `Validate Data Textures` output now covers readable data, import settings, neutral RG, and alpha phase/noise min/max/range/state.
+  - `Validate Data Textures` output now covers readable data, import settings, neutral RG, decoded flow-vector stats, and alpha phase/noise min/max/range/state.
 - Validation matrix location:
   - `spec-driven/features/two-phase-flow/validation.md`, in a table named "Current Validation Matrix."
 - Human-assisted:
   - Open the selected validation scene in visible Godot 4.6+.
+  - Use local Godot 4.6.3 GUI path `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64.exe` for manual editor validation, or console path `C:\Users\pc\Desktop\Godot_v4.6.3-stable\Godot_v4.6.3-stable_win64_console.exe` for scripted visible/runtime probes.
   - Enable the Waterways plugin.
-  - Generate or confirm saved River maps.
+  - Generate or confirm current saved River maps; do not use stale pre-downstream-baseline resources as evidence.
   - Run `River -> Validate Data Textures` and copy Output text.
   - Switch Debug View through Noise Map, Flow Pattern, Flow Arrows, Flow Strength, and Foam Mix.
   - Report Godot version, renderer, GPU/device, scene path, material settings changed, visible behavior, and any console warnings.
@@ -435,7 +451,7 @@ Files and changes explicitly not planned:
 - Shader:
   - Shader parser/load checks are useful for compile sanity only.
   - Visual checks in Forward+ are required before claiming success.
-  - Mobile and Compatibility renderer behavior should be smoke-tested or explicitly marked unvalidated.
+  - Mobile and Compatibility renderer behavior has scene-launch smoke coverage on 2026-05-22; richer visual checks can remain deferred unless a renderer-specific issue appears.
 - Editor:
   - River menu debug view switching must work.
   - Validate Data Textures must produce useful output.
@@ -464,7 +480,7 @@ Files and changes explicitly not planned:
 | Data texture import problems are mistaken for shader bugs. | Shader churn hides the actual issue. | Require `Validate Data Textures`, raw debug views, and import setting review before shader edits. |
 | Alpha phase/noise is flat or destroyed. | Reset timing may synchronize across the river. | Inspect Noise Map and compare flat versus varied alpha where possible. |
 | Existing validation scenes do not expose reset artifacts. | Feature could be approved without meaningful visual proof. | Add a dedicated validation scene if existing scenes are insufficient. |
-| Source validation scenes are absent from the minimal checkout. | Human-assisted validation cannot be run from this workspace as-is. | Restore source fixtures, use an external source validation project, or create a dedicated source validation scene before closure. |
+| Pre-rebase generated maps are reused. | A stale near-neutral map can make Flow Pattern look stuck and falsely implicate `FlowUVW`. | Rebuild or reload current bake resources before visible validation and check decoded vector stats. |
 | Shared include refactor is pulled into Option A. | Packaging or export paths could break all built-in shaders. | Mark shared include as deferred and keep synchronized duplication. |
 | Advanced parameters are exposed too early. | Inspector becomes noisy and artists can create poor output without guidance. | Defer parameter exposure to a shader-preset or advanced-controls spec. |
 | Human-assisted validation is underspecified. | Results are hard to trust or reproduce. | Record exact scene, steps, renderer, version, visible behavior, and Output text. |
@@ -478,7 +494,7 @@ Godot version assumptions:
 
 - Target Godot 4.6+.
 - Validate visible behavior in Forward+ first.
-- Mobile and Compatibility renderer checks are desirable smoke tests, but any unrun renderer must be marked unvalidated.
+- Mobile and Compatibility renderer checks are desirable smoke tests. The validation scene passed bounded Forward Mobile and Compatibility scene-launch checks on 2026-05-22; any richer visual checks must still be recorded separately.
 
 Scene and material compatibility:
 

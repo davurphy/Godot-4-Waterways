@@ -7,11 +7,11 @@ Each task should be independently reviewable and include its validation step.
 
 Keep this as the single fastest way to understand open work.
 
-- Current status: First implementation slice complete locally; Task 12 local screenshot/reload/runtime/performance validation passed, with optional live human editor motion review still available.
+- Current status: Feature complete for the first curve-derived river flow slice.
 - Current implementation baseline: active Waterways has default downstream-baseline RG generation through `bake_generation_behavior = "downstream_baseline_collision_support"`, true `curve_only`, legacy comparison through `bake_generation_behavior = "legacy_collision_only"`, curve-derived source kinds, decoded vector diagnostics, unused atlas RG neutralization, Flow Arrows near-neutral thresholding, and WaterSystem alpha-covered flow diagnostics.
 - Current verification: Godot 4.6.3 local probes on 2026-05-22 confirm default occupied `mag_avg=0.247090`, unused atlas `near_neutral=100.00%`, legacy occupied `near_neutral=95.81%`, zero-layer/no-hit/curve-only blank support fallback, canonical scene rebake/save/reload/runtime checks, screenshots, and low/current/high bake timings.
-- Current blocker for this feature: no curve-derived bake-data blocker remains from Task 12. Live animated editor observation can still add confidence for Flow Pattern motion over time.
-- Next recommended action: decide whether to fix the non-blocking `Validate Data Textures` generated-subresource `.import` warning now, or leave it as a diagnostics follow-up.
+- Current blocker for this feature: none.
+- Next recommended action: move to a separate follow-up only if the generated-subresource `.import` diagnostics warning or live animated editor motion review becomes important.
 - Known deferred work: directional collision RG blending, collision-confidence rules, per-point velocity, slope-derived speed, reverse-flow authoring, edge attenuation, confluences, waterfalls, terrain simulation, broad UI exposure, and any `river.gdshader` rewrite.
 
 ## Rebase Decisions
@@ -141,10 +141,10 @@ These items were in the old plan but are now current baseline behavior rather th
   - Run default, zero-layer, no-hit, curve-only, and legacy bake probes if practical.
   - Validate: record exact commands, environment, results, and any Godot limitations in `validation.md`.
 
-- [ ] Task 12: Run human-assisted visual validation and review.
+- [x] Task 12: Run human-assisted visual validation and review.
   - Local Task 12 evidence is complete for rebake/save, `Validate Data Textures`, focused screenshots, fresh-process reload, runtime-style shader valid flags, F6-style launch smoke, and performance timings.
   - Completed locally: straight no-collider, curved no-collider, flat collider, bank-helper, legacy comparison, save/reload, runtime-style/F6-style smoke, and low/current/high `baking_resolution` timing.
-  - Remaining optional evidence: manual editor menu clicking and a human watch pass for animated Flow Pattern motion over time.
+  - Optional follow-up only: manual editor menu clicking and a human watch pass for animated Flow Pattern motion over time.
   - Validate: update `validation.md` and `review.md` with observed results, residual risk, and follow-up tasks.
 
 ## Deferred Work
@@ -164,5 +164,11 @@ These items were in the old plan but are now current baseline behavior rather th
 
 - [ ] Targeted material force-control checks.
   - `flow_pressure` is expected to have no visible effect on blank-support fixtures. `flow_max` should be validated with a high-force setup before treating it as a product regression.
+
+- [ ] Generated-subresource diagnostics cleanup.
+  - `Validate Data Textures` currently warns about missing `.import` files for generated textures stored as `.res::ImageTexture_*` subresources. Treat this as a diagnostics false-positive follow-up, not a curve-derived bake blocker.
+
+- [ ] Optional live animated editor review.
+  - Task 12 screenshots, runtime-style checks, and F6-style smoke passed. A human can still watch Flow Pattern motion over time from the editor if extra confidence is wanted.
 
 - [ ] Per-point velocity, slope-derived speed, reverse-flow authoring, confluences, waterfalls, terrain simulation, and imported DCC/simulation generation modes.

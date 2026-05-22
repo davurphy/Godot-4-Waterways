@@ -7,7 +7,7 @@ Small local fixes can use a lighter path, but they should still respect the cons
 For each substantial feature, create a dedicated feature subfolder under:
 
 ```text
-C:\Users\pc\Documents\GitHub\Waterways-release-0.2.2\spec-driven\features
+C:\Users\pc\Documents\GitHub\Godot 4 Waterways\spec-driven\features
 ```
 
 Copy the template files from `spec-driven/templates/feature-folder/` into that feature subfolder. All feature-specific `research.md`, `spec.md`, `plan.md`, `tasks.md`, `validation.md`, and `review.md` work should live there.
@@ -32,7 +32,7 @@ Answer:
 - What should be true when this is done?
 - What is explicitly out of scope?
 - Does this need research before planning?
-- Does this touch the legacy Godot 3 behavior, the active Godot 4.6+ add-on, or both?
+- Does this touch the active Godot 4.6+ add-on, spec-driven docs, validation scenes, or project assets?
 
 Before moving on, do a context challenge check:
 
@@ -52,7 +52,7 @@ Research should cover:
 - how comparable flow-map tools or water systems are usually built
 - relevant Godot 4.6+ capabilities and constraints
 - current Godot documentation for editor plugins, gizmos, shaders, textures, physics, and resources
-- the legacy Waterways implementation when preserving behavior matters
+- existing Waterways behavior when preserving compatibility matters
 - likely failure modes
 - likely false premises, expected-behavior cases, or scene/data context the user may be overlooking
 - recommended direction for Waterways
@@ -60,8 +60,7 @@ Research should cover:
 Research output goes in `research.md`.
 Do not turn research directly into code. Turn it into a spec first.
 
-The legacy Godot 3 add-on is a reference implementation, not a design mandate.
-Preserve useful behavior, but do not preserve obsolete APIs or fragile architecture unless the plan explicitly justifies it.
+Preserve useful established behavior, but do not preserve obsolete APIs or fragile architecture unless the plan explicitly justifies it.
 
 ## Phase 2: Spec
 
@@ -125,7 +124,7 @@ Rules:
 - Prefer existing project patterns once the Godot 4.6 architecture is established.
 - Keep editor-only code separate from runtime code.
 - Avoid broad rewrites unless the plan explicitly calls for them.
-- Preserve user-facing behavior from the legacy add-on only when it still makes sense in Godot 4.6+.
+- Preserve established user-facing behavior when it still makes sense in Godot 4.6+.
 - Add comments where they preserve intent, explain Godot quirks, clarify shader/rendering math, or mark architectural boundaries.
 - Update feature and architecture documentation as part of the same change when behavior, data flow, or module boundaries change.
 - Update tasks as work completes.
@@ -171,7 +170,7 @@ Ask:
 
 - Does the implementation satisfy every acceptance criterion?
 - Did it stay within editor/runtime boundaries?
-- Does it avoid obsolete Godot 3 APIs in active code?
+- Does it use current Godot 4.6+ APIs in active code?
 - Are generated textures, resources, and metadata explicit and inspectable?
 - Is there a visual test scene where needed?
 - Is there a performance risk?

@@ -185,7 +185,7 @@ How to measure:
 - Scratch project or temporary folder used:
 - Active scripts/resources mirrored into scratch before validation:
 - Generated bakes/resources created:
-- Files or folders that must be excluded from packaging:
+- Files or folders that should remain local-only:
 - Files or folders safe to delete now:
 
 ## Extension Check
@@ -207,7 +207,7 @@ Failure signs:
 - [ ] Acceptance criteria are satisfied.
 - [ ] Likely false premises or expected-behavior explanations were raised with the user before extra implementation work.
 - [ ] Human-assisted Godot/editor/test results are recorded when the agent could not run them directly.
-- [ ] Active code uses Godot 4.6+ APIs and avoids obsolete Godot 3 APIs.
+- [ ] Active code uses current Godot 4.6+ APIs.
 - [ ] Editor-only and runtime-safe boundaries are preserved.
 - [ ] Generated resources and metadata are explicit and inspectable.
 - [ ] Visual output matches the spec.

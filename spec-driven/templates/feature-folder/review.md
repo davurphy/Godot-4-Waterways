@@ -51,7 +51,7 @@ Use this as the review dashboard. Keep it concise and update it before handing o
 - Godot 4.6+ API target preserved: Yes/No/Partial
 - Editor/runtime boundary preserved: Yes/No/Partial
 - Bake data and generated resources explicit: Yes/No/Partial
-- Legacy Godot 3 behavior used only as reference: Yes/No/Partial/Not applicable
+- Existing Waterways behavior preserved or intentionally changed: Yes/No/Partial/Not applicable
 - Extension points preserved: Yes/No/Partial/Not applicable
 - Godot-native features preferred where practical: Yes/No/Partial
 - Bespoke systems justified: Yes/No/Partial

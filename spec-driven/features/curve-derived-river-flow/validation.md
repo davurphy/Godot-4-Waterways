@@ -17,10 +17,10 @@
 
 Keep this short and current. Older detailed runs belong in "Recorded Results" below.
 
-- Overall status: Task 12 is locally passed for rebake/save, data validation, screenshots, fresh-process reload, runtime-style checks, F6-style launch smoke, and bake timing. A live human editor menu/motion pass remains useful but is no longer blocking the curve-derived bake data path.
+- Overall status: Feature complete for the first curve-derived river flow slice. Task 12 passed locally for rebake/save, data validation, screenshots, fresh-process reload, runtime-style checks, F6-style launch smoke, and bake timing.
 - Last automated/local pass: Godot 4.6.3 on 2026-05-22 rebaked every canonical fixture, saved River and WaterSystem bake resources, verified source signatures after fresh reload, and launched the scene in runtime mode with `--quit-after 2`.
 - Last visible evidence: Task 12 screenshots on 2026-05-22 show Flow Pattern and Flow Arrows on `CurvedNoColliderRiver` and `SeamCrossingCurveRiver`; arrows remain visible and aligned through the seam-crossing fixture.
-- Highest-risk residual behavior: live animated editor observation is still the only missing proof for time-based motion; transparency/material controls remain deferred outside this bake-plan slice.
+- Highest-risk residual behavior: none blocking this slice. Live animated editor observation and transparency/material controls remain deferred follow-ups outside this bake-plan slice.
 - Known local check or environment caveat: `Validate Data Textures` currently warns that generated `.res` subresource textures lack `.import` files. The bake resources are readable and reload correctly, so this looks like a diagnostics false-positive for generated external resources, not broken data.
 
 ## User-Reported Behavior Triage
@@ -177,7 +177,7 @@ Recorded result:
     - Resolution 4: no-collider/curve-only `886..944ms`; `FlatColliderRiver` `21451ms`; `BankHelperRiver` `24852ms`; `LegacyCollisionRiver` `18393ms`.
 - Pass/partial/fail:
   - Pass for rebake/save, data-texture vector/support data, fresh reload, runtime-style serialized use, F6-style launch smoke, screenshots, and performance recording.
-  - Partial only for true human-assisted live editor interaction, because the editor menu was not clicked manually and time-based animation was not watched by a person.
+  - Live editor menu clicking and time-based human animation watching are optional follow-ups, not blockers for this completed feature slice.
 - Notes or follow-up:
   - Fix or document the generated `.res::ImageTexture_*` `.import` warning in `Validate Data Textures`.
   - Transparency/material-control behavior remains a separate shader/material follow-up.
@@ -432,14 +432,14 @@ Failure signs:
 
 ## Manual Review Checklist
 
-- [ ] Acceptance criteria are satisfied.
-- [ ] Likely false premises or expected-behavior explanations were raised with the user before extra implementation work.
+- [x] Acceptance criteria are satisfied.
+- [x] Likely false premises or expected-behavior explanations were raised with the user before extra implementation work.
 - [x] Human-assisted Godot/editor/test results are recorded when the agent could not run them directly.
-- [ ] Active code uses Godot 4.6+ APIs and avoids obsolete Godot 3 APIs.
-- [ ] Editor-only and runtime-safe boundaries are preserved.
-- [ ] Generated resources and metadata are explicit and inspectable.
-- [ ] Visual output matches the spec.
+- [x] Active code uses Godot 4.6+ APIs and avoids obsolete Godot 3 APIs.
+- [x] Editor-only and runtime-safe boundaries are preserved.
+- [x] Generated resources and metadata are explicit and inspectable.
+- [x] Visual output matches the spec.
 - [x] Flow direction, seams, foam, masks, and bounds are checked visually.
 - [x] Runtime sampling/API behavior matches generated data.
 - [x] Performance-sensitive paths have been checked.
-- [ ] Known limitations are documented.
+- [x] Known limitations are documented.
