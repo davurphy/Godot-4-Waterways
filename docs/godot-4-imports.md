@@ -14,8 +14,11 @@ Recommended import settings for user-supplied data maps:
 - VRAM/block compression: disabled
 - lossy formats such as JPEG or lossy WebP: unsupported for data maps
 - neutral flow: preserve `(0.5, 0.5)` in `R/G`
+- phase/noise alpha: preserve `flow_foam_noise.a` when supplying River flow maps that use two-phase reset desynchronization
 
 Linear PNG is the current practical interchange format. Higher precision formats can be used if the project validates import precision and runtime readback.
+
+For River `flow_foam_noise` data, `R/G` store signed flow packed into `0..1`, `B` stores foam influence, and `A` stores optional phase/noise offset consumed by the built-in `FlowUVW` shader path. Do not import this texture as a normal map or as ordinary color art; gamma changes, lossy compression, alpha stripping, or block compression can change the numeric flow and phase data.
 
 ## Generated Maps
 
@@ -24,9 +27,11 @@ Generated River and WaterSystem maps are created as Godot texture resources at b
 After a successful bake:
 
 - `River.flow_foam_noise` and `River.dist_pressure` hold generated textures.
-- `River.bake_data` records texture references, channel metadata, import profile, source metadata, and padded-atlas layout.
+- `River.bake_data` records texture references, channel metadata, import profile, source metadata, decoded flow-vector diagnostics, generation behavior, and padded-atlas layout.
 - `WaterSystem.system_map` holds the generated system map.
-- `WaterSystem.bake_data` records texture references, world bounds, world-to-map transform, source River paths, channel metadata, import profile, and source metadata.
+- `WaterSystem.bake_data` records texture references, world bounds, world-to-map transform, source River paths, channel metadata, import profile, source metadata, and alpha-covered flow-vector diagnostics.
+
+Generated River maps use curve-derived source kinds for new bakes. The default `bake_generation_behavior = "downstream_baseline_collision_support"` writes `generated_curve_collision_modifiers_bake`: occupied atlas tiles carry gentle local downstream `R/G`, collision-derived maps provide support channels when helper colliders are useful, saturated flat foam and pressure support are softened, and unused atlas tiles are neutralized in `R/G`. If raycast layers are `0` or no collider pixels are found, the default writes exact blank support maps while keeping downstream `R/G` and phase/noise alpha. `bake_generation_behavior = "curve_only"` writes `generated_curve_only_bake` and always skips collision support. Existing `generated_downstream_baseline_collision_bake` resources remain readable as the predecessor source kind. Legacy collision-only bakes remain identifiable through source metadata and can still be produced by setting `bake_generation_behavior` to `legacy_collision_only` before baking.
 
 For saved scenes, normal bake actions overwrite the currently assigned external `bake_data.resource_path`. If no external resource exists yet, Waterways creates a deterministic scene-owned path such as `res://waterways_bakes/scenes_validation_waterways_authoring_smoke_validation/SmokeRiver.river_bake.res` or `SmokeWaterSystem.water_system_bake.res`. Duplicate node names receive deterministic suffixes based on scene-relative node paths.
 
@@ -78,5 +83,7 @@ Use `River -> Validate Data Textures` on a selected River to check:
 - source path or generated/resource-owned status
 - import profile warnings for project textures
 - neutral flow preservation for imported flow maps
+- decoded flow-vector magnitude stats for source, occupied, and unused UV2 atlas regions
+- alpha phase/noise min/max/range/state for `flow_foam_noise.a`
 
-Use `WaterSystem -> Validate Map Sampling` after generating a WaterSystem map to check coverage, source paths, bounds sampling, and wet-target assignment for validation scenes that opt into those checks.
+Use `WaterSystem -> Validate Map Sampling` after generating a WaterSystem map to check coverage, alpha-covered decoded flow-vector stats, source paths, bounds sampling, and wet-target assignment for validation scenes that opt into those checks.

@@ -15,6 +15,7 @@ const SHAPE_STEP_DIVS_MIN := 1
 const SHAPE_STEP_DIVS_MAX := 8
 const SHAPE_SMOOTHNESS_MIN := 0.1
 const SHAPE_SMOOTHNESS_MAX := 5.0
+const FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD := 0.02
 
 
 static func save_river_bake_data(owner: Node, bake_data: Resource) -> Dictionary:
@@ -331,6 +332,252 @@ static func calculate_side(steps : int) -> int:
 	if fmod(side_float, 1.0) != 0.0:
 		side_float += 1.0
 	return int(side_float)
+
+
+static func decode_packed_flow_vector(color: Color) -> Vector2:
+	return Vector2((color.r - 0.5) * 2.0, (color.g - 0.5) * 2.0)
+
+
+static func encode_packed_flow_vector(vector: Vector2) -> Color:
+	return Color(clampf(vector.x * 0.5 + 0.5, 0.0, 1.0), clampf(vector.y * 0.5 + 0.5, 0.0, 1.0), 0.0, 1.0)
+
+
+static func create_downstream_baseline_flow_image(resolution: int, uv2_sides: int, occupied_steps: int, strength: float = 1.0) -> Image:
+	var safe_resolution: int = maxi(1, resolution)
+	var safe_side: int = maxi(1, uv2_sides)
+	var total_tiles := safe_side * safe_side
+	var safe_occupied_steps: int = clampi(occupied_steps, 0, total_tiles)
+	var image := Image.create(safe_resolution, safe_resolution, false, Image.FORMAT_RGBA8)
+	var neutral_color := encode_packed_flow_vector(Vector2.ZERO)
+	image.fill(neutral_color)
+	var downstream_color := encode_packed_flow_vector(Vector2(0.0, clampf(strength, 0.0, 1.0)))
+	var source_rect := Rect2i(0, 0, safe_resolution, safe_resolution)
+	for step_index in safe_occupied_steps:
+		var tile_rect := get_uv2_atlas_tile_rect(step_index, safe_side, source_rect)
+		for y in tile_rect.size.y:
+			for x in tile_rect.size.x:
+				image.set_pixel(tile_rect.position.x + x, tile_rect.position.y + y, downstream_color)
+	return image
+
+
+static func neutralize_unused_uv2_atlas_flow_rg(image: Image, uv2_sides: int, occupied_steps: int, content_rect: Rect2i = Rect2i()) -> void:
+	if image == null or image.is_empty():
+		return
+	var source_rect := _clamp_image_rect(image, content_rect)
+	var side: int = maxi(1, uv2_sides)
+	if side <= 1 and occupied_steps > 1:
+		side = calculate_side(occupied_steps)
+	var total_tiles := side * side
+	var safe_occupied_steps: int = clampi(occupied_steps, 0, total_tiles)
+	for step_index in range(safe_occupied_steps, total_tiles):
+		var tile_rect := get_uv2_atlas_tile_rect(step_index, side, source_rect)
+		for y in tile_rect.size.y:
+			for x in tile_rect.size.x:
+				var pixel_position := Vector2i(tile_rect.position.x + x, tile_rect.position.y + y)
+				var color := image.get_pixelv(pixel_position)
+				color.r = 0.5
+				color.g = 0.5
+				image.set_pixelv(pixel_position, color)
+
+
+static func get_decoded_flow_vector_stats(image: Image, rect: Rect2i = Rect2i(), near_neutral_threshold: float = FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD, alpha_threshold: float = -1.0) -> Dictionary:
+	var sample_rect := _clamp_image_rect(image, rect)
+	if sample_rect.size.x <= 0 or sample_rect.size.y <= 0:
+		return _empty_flow_vector_stats(near_neutral_threshold, alpha_threshold, 1)
+	return _get_decoded_flow_vector_stats_for_rects(image, [sample_rect], near_neutral_threshold, alpha_threshold)
+
+
+static func get_uv2_atlas_decoded_flow_vector_stats(image: Image, uv2_sides: int, occupied_steps: int, content_rect: Rect2i = Rect2i(), near_neutral_threshold: float = FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD, alpha_threshold: float = -1.0) -> Dictionary:
+	var source_rect := _clamp_image_rect(image, content_rect)
+	var side: int = maxi(1, uv2_sides)
+	if side <= 1 and occupied_steps > 1:
+		side = calculate_side(occupied_steps)
+	var total_tiles := side * side
+	var safe_occupied_steps: int = clampi(occupied_steps, 0, total_tiles)
+	var occupied_rects := []
+	var unused_rects := []
+	for step_index in total_tiles:
+		var tile_rect := get_uv2_atlas_tile_rect(step_index, side, source_rect)
+		if tile_rect.size.x <= 0 or tile_rect.size.y <= 0:
+			continue
+		if step_index < safe_occupied_steps:
+			occupied_rects.append(tile_rect)
+		else:
+			unused_rects.append(tile_rect)
+	return {
+		"source_rect": source_rect,
+		"uv2_sides": side,
+		"occupied_tile_count": occupied_rects.size(),
+		"unused_tile_count": unused_rects.size(),
+		"occupied": _get_decoded_flow_vector_stats_for_rects(image, occupied_rects, near_neutral_threshold, alpha_threshold),
+		"unused": _get_decoded_flow_vector_stats_for_rects(image, unused_rects, near_neutral_threshold, alpha_threshold)
+	}
+
+
+static func get_uv2_atlas_tile_rect(step_index: int, side: int, source_rect: Rect2i) -> Rect2i:
+	var safe_side: int = maxi(1, side)
+	if source_rect.size.x <= 0 or source_rect.size.y <= 0:
+		return Rect2i()
+	var column := int(step_index / safe_side)
+	var row := step_index % safe_side
+	var x0 := source_rect.position.x + int(floor(float(column) * float(source_rect.size.x) / float(safe_side)))
+	var x1 := source_rect.position.x + int(floor(float(column + 1) * float(source_rect.size.x) / float(safe_side)))
+	var y0 := source_rect.position.y + int(floor(float(row) * float(source_rect.size.y) / float(safe_side)))
+	var y1 := source_rect.position.y + int(floor(float(row + 1) * float(source_rect.size.y) / float(safe_side)))
+	return Rect2i(x0, y0, maxi(1, x1 - x0), maxi(1, y1 - y0))
+
+
+static func format_decoded_flow_vector_stats(label: String, stats: Dictionary) -> String:
+	if stats.is_empty() or not bool(stats.get("valid", false)):
+		return label + " flow_stats=no_pixels"
+	var threshold := float(stats.get("near_neutral_threshold", FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD))
+	var average_vector: Vector2 = stats.get("average_vector", Vector2.ZERO)
+	var min_rg: Vector2 = stats.get("min_rg", Vector2.ZERO)
+	var max_rg: Vector2 = stats.get("max_rg", Vector2.ZERO)
+	var alpha_suffix := ""
+	if float(stats.get("alpha_threshold", -1.0)) >= 0.0:
+		alpha_suffix = " alpha_gt_%.4f_skipped=%d" % [float(stats.get("alpha_threshold", -1.0)), int(stats.get("alpha_skipped_pixel_count", 0))]
+	return "%s pixels=%d active_mag_gt_%.3f=%d near_neutral=%.2f%% mag_min=%.6f mag_median=%.6f mag_avg=%.6f mag_max=%.6f avg_vec=(%.4f, %.4f) range_rg=(%.4f..%.4f, %.4f..%.4f)%s" % [
+		label,
+		int(stats.get("sampled_pixel_count", 0)),
+		threshold,
+		int(stats.get("active_pixel_count", 0)),
+		float(stats.get("near_neutral_percent", 0.0)),
+		float(stats.get("min_magnitude", 0.0)),
+		float(stats.get("median_magnitude", 0.0)),
+		float(stats.get("average_magnitude", 0.0)),
+		float(stats.get("max_magnitude", 0.0)),
+		average_vector.x,
+		average_vector.y,
+		min_rg.x,
+		max_rg.x,
+		min_rg.y,
+		max_rg.y,
+		alpha_suffix
+	]
+
+
+static func _clamp_image_rect(image: Image, rect: Rect2i) -> Rect2i:
+	if image == null or image.is_empty():
+		return Rect2i()
+	var image_size := image.get_size()
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		return Rect2i(Vector2i.ZERO, image_size)
+	var x0: int = clampi(rect.position.x, 0, image_size.x)
+	var y0: int = clampi(rect.position.y, 0, image_size.y)
+	var x1: int = clampi(rect.position.x + rect.size.x, x0, image_size.x)
+	var y1: int = clampi(rect.position.y + rect.size.y, y0, image_size.y)
+	return Rect2i(x0, y0, maxi(0, x1 - x0), maxi(0, y1 - y0))
+
+
+static func _get_decoded_flow_vector_stats_for_rects(image: Image, rects: Array, near_neutral_threshold: float, alpha_threshold: float) -> Dictionary:
+	var stats := _empty_flow_vector_stats(near_neutral_threshold, alpha_threshold, rects.size())
+	if image == null or image.is_empty() or rects.is_empty():
+		return stats
+	var safe_threshold := max(0.0, near_neutral_threshold)
+	var magnitudes := []
+	var sum_magnitude := 0.0
+	var sum_vector := Vector2.ZERO
+	var sum_rg := Vector2.ZERO
+	var min_vector := Vector2(INF, INF)
+	var max_vector := Vector2(-INF, -INF)
+	var min_rg := Vector2(INF, INF)
+	var max_rg := Vector2(-INF, -INF)
+	var min_magnitude := INF
+	var max_magnitude := -INF
+	var sampled_pixels := 0
+	var total_pixels := 0
+	var alpha_skipped_pixels := 0
+	var near_neutral_pixels := 0
+	for raw_rect in rects:
+		if typeof(raw_rect) != TYPE_RECT2I:
+			continue
+		var raw_rect2i: Rect2i = raw_rect
+		var rect := _clamp_image_rect(image, raw_rect2i)
+		if rect.size.x <= 0 or rect.size.y <= 0:
+			continue
+		total_pixels += rect.size.x * rect.size.y
+		for y in rect.size.y:
+			for x in rect.size.x:
+				var pixel := image.get_pixel(rect.position.x + x, rect.position.y + y)
+				if alpha_threshold >= 0.0 and pixel.a <= alpha_threshold:
+					alpha_skipped_pixels += 1
+					continue
+				var vector := decode_packed_flow_vector(pixel)
+				var magnitude := vector.length()
+				magnitudes.append(magnitude)
+				sampled_pixels += 1
+				sum_magnitude += magnitude
+				sum_vector += vector
+				sum_rg += Vector2(pixel.r, pixel.g)
+				min_magnitude = min(min_magnitude, magnitude)
+				max_magnitude = max(max_magnitude, magnitude)
+				min_vector.x = min(min_vector.x, vector.x)
+				min_vector.y = min(min_vector.y, vector.y)
+				max_vector.x = max(max_vector.x, vector.x)
+				max_vector.y = max(max_vector.y, vector.y)
+				min_rg.x = min(min_rg.x, pixel.r)
+				min_rg.y = min(min_rg.y, pixel.g)
+				max_rg.x = max(max_rg.x, pixel.r)
+				max_rg.y = max(max_rg.y, pixel.g)
+				if magnitude <= safe_threshold:
+					near_neutral_pixels += 1
+	if sampled_pixels <= 0:
+		stats["total_pixel_count"] = total_pixels
+		stats["alpha_skipped_pixel_count"] = alpha_skipped_pixels
+		return stats
+	magnitudes.sort()
+	var median_magnitude := 0.0
+	var middle_index := int(floor(float(magnitudes.size()) * 0.5))
+	if magnitudes.size() % 2 == 0:
+		median_magnitude = (float(magnitudes[middle_index - 1]) + float(magnitudes[middle_index])) * 0.5
+	else:
+		median_magnitude = float(magnitudes[middle_index])
+	stats["valid"] = true
+	stats["total_pixel_count"] = total_pixels
+	stats["sampled_pixel_count"] = sampled_pixels
+	stats["alpha_skipped_pixel_count"] = alpha_skipped_pixels
+	stats["near_neutral_pixel_count"] = near_neutral_pixels
+	stats["active_pixel_count"] = sampled_pixels - near_neutral_pixels
+	stats["near_neutral_percent"] = 100.0 * float(near_neutral_pixels) / float(sampled_pixels)
+	stats["active_percent"] = 100.0 * float(sampled_pixels - near_neutral_pixels) / float(sampled_pixels)
+	stats["min_magnitude"] = min_magnitude
+	stats["max_magnitude"] = max_magnitude
+	stats["average_magnitude"] = sum_magnitude / float(sampled_pixels)
+	stats["median_magnitude"] = median_magnitude
+	stats["min_vector"] = min_vector
+	stats["max_vector"] = max_vector
+	stats["average_vector"] = sum_vector / float(sampled_pixels)
+	stats["min_rg"] = min_rg
+	stats["max_rg"] = max_rg
+	stats["average_rg"] = sum_rg / float(sampled_pixels)
+	return stats
+
+
+static func _empty_flow_vector_stats(near_neutral_threshold: float, alpha_threshold: float, rect_count: int) -> Dictionary:
+	return {
+		"valid": false,
+		"rect_count": rect_count,
+		"near_neutral_threshold": max(0.0, near_neutral_threshold),
+		"alpha_threshold": alpha_threshold,
+		"total_pixel_count": 0,
+		"sampled_pixel_count": 0,
+		"alpha_skipped_pixel_count": 0,
+		"near_neutral_pixel_count": 0,
+		"active_pixel_count": 0,
+		"near_neutral_percent": 0.0,
+		"active_percent": 0.0,
+		"min_magnitude": 0.0,
+		"max_magnitude": 0.0,
+		"average_magnitude": 0.0,
+		"median_magnitude": 0.0,
+		"min_vector": Vector2.ZERO,
+		"max_vector": Vector2.ZERO,
+		"average_vector": Vector2.ZERO,
+		"min_rg": Vector2.ZERO,
+		"max_rg": Vector2.ZERO,
+		"average_rg": Vector2.ZERO
+	}
 
 
 static func generate_river_width_values(curve : Curve3D, steps : int, step_length_divs : int, step_width_divs : int, widths : Array) -> Array:

@@ -385,6 +385,12 @@ func validate_generated_map_sampling() -> bool:
 	if not outside_altitude_ok or not outside_flow_ok:
 		push_warning("WATER_SYSTEM_GENERATED_MAP_TEST: outside fallback failed. altitude=" + str(outside_altitude) + " flow=" + str(outside_flow))
 		return false
+	var alpha_flow_stats := WaterHelperMethods.get_decoded_flow_vector_stats(
+		_system_img,
+		Rect2i(),
+		WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD,
+		SYSTEM_COVERAGE_THRESHOLD
+	)
 	print(
 		"WATER_SYSTEM_GENERATED_MAP_TEST: ",
 		river_samples.size(),
@@ -398,6 +404,8 @@ func validate_generated_map_sampling() -> bool:
 		edge_altitude,
 		" flow=",
 		edge_flow,
+		"; ",
+		WaterHelperMethods.format_decoded_flow_vector_stats("alpha_covered_flow", alpha_flow_stats),
 		"."
 	)
 	return true
@@ -581,6 +589,7 @@ func _apply_bake_data() -> void:
 func _write_bake_data(texture_size: Vector2i, source_river_paths: PackedStringArray, source_river_metadata: Array, system_map_diagnostics: Dictionary) -> void:
 	var data := _ensure_bake_data()
 	var source_metadata := {
+		"system_map_diagnostics": system_map_diagnostics.duplicate(true),
 		"supported_future_source_kinds": PackedStringArray([
 			"generated_water_system_combine",
 			"imported_linear_system_map",
@@ -916,6 +925,12 @@ func _get_system_map_diagnostics(texture: Texture2D) -> Dictionary:
 			"average": sums[channel] / count,
 			"range": max_values[channel] - min_values[channel]
 		}
+	diagnostics["alpha_covered_flow"] = WaterHelperMethods.get_decoded_flow_vector_stats(
+		image,
+		Rect2i(),
+		WaterHelperMethods.FLOW_VECTOR_NEAR_NEUTRAL_THRESHOLD,
+		SYSTEM_COVERAGE_THRESHOLD
+	)
 	return diagnostics
 
 

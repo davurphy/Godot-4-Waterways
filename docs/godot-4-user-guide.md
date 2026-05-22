@@ -67,16 +67,36 @@ Channel contract:
 - `flow_foam_noise.r`: signed flow X packed to `0..1`, neutral `0.5`.
 - `flow_foam_noise.g`: signed flow Y/Z packed to `0..1`, neutral `0.5`.
 - `flow_foam_noise.b`: foam influence.
-- `flow_foam_noise.a`: optional phase noise.
+- `flow_foam_noise.a`: optional phase/noise time offset for the two-phase flow animation.
 - `dist_pressure.r`: bank distance or edge influence.
 - `dist_pressure.g`: flow pressure or occupancy.
 - `dist_pressure.b/a`: reserved.
 
 Generated River textures currently use a padded UV2 atlas with one tile of margin. The padding ring is initialized on every side and corner before filtering so atlas-edge samples do not read untouched black pixels, and generated data atlases are kept without mipmaps. `RiverBakeData.texture_size` is the shader-facing padded size. `source_texture_size` and `content_rect` identify the central unpadded bake area for diagnostics and future export workflows.
 
+The default generated River bake now writes gentle local downstream flow into occupied UV2 atlas tiles and uses collision data for foam, pressure, distance, and edge support. This prevents flat collision interiors from becoming valid-looking but directionless flow. If `baking_raycast_layers` is `0`, or if no collider pixels are found, the default bake still succeeds with curve downstream flow and exact blank support maps: foam `B = 0.0` and `dist_pressure.rg = (0.0, 0.0)`. Unused atlas tiles are reset to neutral `R/G` after combine so they do not leak arbitrary direction into later debug or WaterSystem composition. If collision-derived foam or pressure support is saturated across occupied tiles, the default bake softens those support channels to avoid full-width foam bands and over-strong Flow Pattern distortion.
+
+`River -> Validate Data Textures` reports decoded flow-vector magnitude stats for the source rect, occupied tiles, and unused tiles. Near-neutral vectors have valid numeric angles but no meaningful direction, so use the magnitude and `active_mag_gt_0.020` counts before trusting Flow Arrows. The script property `bake_generation_behavior = "curve_only"` skips collision probing and always uses the blank support fallback. The script property `bake_generation_behavior = "legacy_collision_only"` keeps the older collision-gradient-only comparison path available for validation and compatibility checks; legacy still requires a nonzero raycast layer mask.
+
 Rebaking overwrites the current external `bake_data.resource_path` when one exists. This preserves user-assigned resource paths and avoids silently switching files after ordinary node renames or scene moves. If multiple Rivers in the same scene have the same name, Waterways appends a deterministic suffix derived from each scene-relative node path.
 
 If baking reports missing collider pixels or flat channels, check the River bake collision layer, the scene's collision helpers, and whether the generated mesh crosses the intended bake geometry.
+
+## Two-Phase River Flow
+
+The built-in river, river debug, and lava shaders use the same `FlowUVW` two-phase flow basis. `flow_foam_noise.rg` is decoded from packed `0..1` data into signed flow, `flow_foam_noise.a` is added to shader time as a phase/noise offset, and two half-period phases are blended so one phase fades out before its UV reset becomes obvious.
+
+When flow looks wrong, start with `River -> Validate Data Textures` before changing material settings or shader code. The `RIVER_DATA_TEXTURE_TEST` Output line reports texture readability, source/import notes, closest sampled neutral RG, and alpha min/max/range/state for `flow_foam_noise.a`. Flat alpha can be valid, but it is important evidence when diagnosing synchronized pulsing.
+
+Use `River -> Debug View` as a data and motion triage tool:
+
+- `Display Debug Noise Map (A)`: shows the alpha phase/noise channel.
+- `Display Debug Flow Pattern`: shows the animated two-phase distortion directly.
+- `Display Debug Flow Arrows`: shows decoded direction, but near-neutral raw vectors are suppressed so packed neutral values like `[127,128]` do not appear as confident diagonal arrows.
+- `Display Debug Flow Strength`: shows the effective strength response; this debug view intentionally amplifies the steepness diagnostic compared with the default river and lava shaders, so treat it as qualitative evidence.
+- `Display Debug Foam Mix`: shows the downstream normal/foam sampling path used to judge whether foam remains coherent with the flow.
+
+If Flow Pattern and Flow Arrows agree but the result still looks poor, check authored flow gradients, flat alpha, stale generated maps, texture import settings, `flow_speed`, force settings, normal texture repetition, and UV scale before treating `FlowUVW` as the first suspect.
 
 ## WaterSystem Setup
 
@@ -195,6 +215,9 @@ The scenes below are source-repo QA fixtures. They are not included in the minim
 
 Use these scenes when checking the port:
 
+- `scenes/validation/curve_derived_river_flow_validation.tscn`: canonical curve-derived River fixture with straight no-collider, curved no-collider, flat collider, bank-helper, legacy collision, and UV2 seam-crossing Rivers.
+- `scenes/validation/flow_map_direction_verification.tscn`: straight River regression fixture for default downstream flow generation, near-neutral Flow Arrows, unused UV2 atlas neutrality, WaterSystem composition stats, save/reload, and runtime checks.
+- `scenes/validation/two_phase_flow_validation.tscn`: preferred dedicated source fixture for two-phase river motion, neutral flow, alpha/noise variation, debug-view switching, and lava coverage when present.
 - `scenes/validation/waterways_authoring_smoke_validation.tscn`: editor River selection, toolbar, gizmo, debug views, and a simple run-view buoyancy anchor.
 - `scenes/validation/system_map_validation.tscn`: two child Rivers, transformed parent, River/WaterSystem bakes, map sampling, and wet-target material assignment.
 - `scenes/validation/imported_data_texture_validation.tscn`: imported user data map validation.

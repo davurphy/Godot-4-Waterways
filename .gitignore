@@ -1,0 +1,5 @@
+# Godot local editor/import/shader cache.
+.godot/
+
+# Local Codex validation probes, screenshots, logs, and scratch copies.
+.codex-research/

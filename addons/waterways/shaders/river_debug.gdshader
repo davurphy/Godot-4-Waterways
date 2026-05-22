@@ -42,6 +42,7 @@ uniform bool i_valid_flowmap = false;
 uniform int i_uv2_sides = 2;
 
 const float EPSILON = 0.0001;
+const float FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD = 0.02;
 
 vec3 FlowUVW(vec2 uv_in, vec2 flowVector, vec2 jump, vec3 tiling, float time, bool flowB) {
 	float phaseOffset = flowB ? 0.5 : 0.0;
@@ -95,8 +96,9 @@ void fragment() {
 		float invalid_checker = step(0.5, fract((UV.x + UV.y) * 12.0));
 		ALBEDO = mix(vec3(1.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), invalid_checker);
 	}
-	if (i_valid_flowmap) {
+if (i_valid_flowmap) {
 	flow = (flow - 0.5) * 2.0; // unpack flowmap
+	vec2 raw_flow = flow;
 	
 	// calculate the steepness map
 	vec3 flow_viewspace = flow.x * TANGENT + flow.y * BINORMAL;
@@ -132,13 +134,18 @@ void fragment() {
 	} else if(mode == FLOW_ARROWS) {
 		vec2 tiled_UV_raw = UV * uv_scale.xy * 10.0;
 		vec2 tiled_UV = fract(tiled_UV_raw) - 0.5;
-		float rotation = atan(flow.y, flow.x) - 3.14 / 2.0;
-		float cosine = cos(rotation);
-		float sine = sin(rotation);
-		mat2 rotation_mat = mat2(vec2(cosine, -sine), vec2(sine, cosine));
-		vec2 new_uv = rotation_mat * tiled_UV + 0.5;
-		float lod = mip_map_level(tiled_UV_raw * vec2(textureSize(debug_arrow, 0)));
-		ALBEDO = textureLod(debug_arrow, new_uv, lod).rgb;
+		// Near-neutral packed RG has an unstable numeric angle; show it as neutral.
+		if (length(raw_flow) <= FLOW_ARROW_NEAR_NEUTRAL_THRESHOLD) {
+			ALBEDO = vec3(0.04);
+		} else {
+			float rotation = atan(raw_flow.y, raw_flow.x) - 3.14 / 2.0;
+			float cosine = cos(rotation);
+			float sine = sin(rotation);
+			mat2 rotation_mat = mat2(vec2(cosine, -sine), vec2(sine, cosine));
+			vec2 new_uv = rotation_mat * tiled_UV + 0.5;
+			float lod = mip_map_level(tiled_UV_raw * vec2(textureSize(debug_arrow, 0)));
+			ALBEDO = textureLod(debug_arrow, new_uv, lod).rgb;
+		}
 		
 	} else if(mode == FLOW_FORCE) {
 		float gradient = clamp(mix(0.0, 1.0, flow_force / max(flow_max, EPSILON)), 0.0, 1.0);

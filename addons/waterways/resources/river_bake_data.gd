@@ -29,6 +29,9 @@ const DEFAULT_IMPORT_PROFILE := {
 
 const TEXTURE_LAYOUT_PADDED_UV2_ATLAS := "padded_uv2_atlas_with_one_tile_margin"
 const SOURCE_KIND_SPLINE_COLLISION_BAKE := "generated_spline_collision_bake"
+const SOURCE_KIND_DOWNSTREAM_BASELINE_COLLISION_BAKE := "generated_downstream_baseline_collision_bake"
+const SOURCE_KIND_CURVE_COLLISION_MODIFIERS_BAKE := "generated_curve_collision_modifiers_bake"
+const SOURCE_KIND_CURVE_ONLY_BAKE := "generated_curve_only_bake"
 
 @export var flow_foam_noise: Texture2D
 @export var dist_pressure: Texture2D
