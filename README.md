@@ -2,7 +2,7 @@
 
 Waterways is a Godot add-on for authoring river meshes and baking flow, foam, distance, pressure, and water-system maps from editable river curves.
 
-This workspace currently contains the in-progress Godot 4.6+ port of the add-on. The active add-on lives in `addons/waterways`. The Godot 3 source snapshot is kept under `legacy/godot-3/addons/waterways` as reference material only.
+This workspace currently contains the in-progress Godot 4.6+ port of the add-on. The active add-on lives in `addons/waterways`.
 
 For the minimal `0.2.2` package, copy `addons/waterways` into a Godot 4.6+ project and enable the plugin. Source-repo QA fixtures such as `scenes/validation/`, `spec-driven/`, `audit/`, and generated `waterways_bakes/` resources are intentionally not part of the minimal add-on package.
 
