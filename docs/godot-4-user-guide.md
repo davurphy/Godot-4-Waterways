@@ -41,6 +41,22 @@ Toolbar tools:
 - `Local Mode`: apply movement constraints in local curve space.
 - `River`: opens River actions, including map generation, mesh sibling generation, validation actions, and debug views.
 
+### Adding New River Points
+
+Use `Add` mode and click in the 3D viewport.
+
+When you click directly on the existing River curve, Waterways inserts a new point into the clicked curve span. Constraint settings do not move that on-curve insertion point.
+
+When you click away from the existing curve, Waterways appends a new point after the final River point. The `Constraints` menu controls where that appended point can be placed:
+
+- `No Constraint`: place the appended point on the camera-facing plane through the previous River point.
+- `Snap to Colliders`: place the appended point on compatible collider geometry when the mouse ray hits it.
+- `Plane YZ`: keep the X coordinate fixed and place the point in the Y/Z plane through the previous River point. Shortcut: `Shift+X`.
+- `Plane XZ`: keep the Y coordinate fixed and place the point in the X/Z plane through the previous River point. With `Local Mode` off, this keeps the appended point at the same height as the previous River point. Shortcut: `Shift+Y`.
+- `Plane XY`: keep the Z coordinate fixed and place the point in the X/Y plane through the previous River point. Shortcut: `Shift+Z`.
+
+With `Local Mode` off, plane constraints use Godot's global X/Y/Z axes. With `Local Mode` on, they use the local constraint basis at the previous River point, so `Plane XZ` is not guaranteed to preserve global height.
+
 Useful editor checks:
 
 - Point add/remove supports undo and redo.
